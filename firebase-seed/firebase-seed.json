@@ -1,0 +1,214 @@
+{
+  "channels": [
+    {
+      "id": "60s",
+      "title": "60's",
+      "description": "Best hits of the 60's",
+      "sortOrder": 1,
+      "isActive": true,
+      "filter": {
+        "yearRange": { "from": 1960, "to": 1970 }
+      },
+      "playlistConfig": {
+        "shuffle": true,
+        "maxSongs": 200,
+        "jingleEvery": 4
+      }
+    },
+    {
+      "id": "70s",
+      "title": "70's",
+      "description": "Classic hits of the 70's",
+      "sortOrder": 2,
+      "isActive": true,
+      "filter": {
+        "yearRange": { "from": 1970, "to": 1980 }
+      },
+      "playlistConfig": {
+        "shuffle": true,
+        "maxSongs": 200,
+        "jingleEvery": 4
+      }
+    },
+    {
+      "id": "80s",
+      "title": "80's",
+      "description": "Retro 80's music",
+      "sortOrder": 3,
+      "isActive": true,
+      "filter": {
+        "yearRange": { "from": 1980, "to": 1990 }
+      },
+      "playlistConfig": {
+        "shuffle": true,
+        "maxSongs": 200,
+        "jingleEvery": 4
+      }
+    },
+    {
+      "id": "90s",
+      "title": "90's",
+      "description": "90's Nostalgia",
+      "sortOrder": 4,
+      "isActive": true,
+      "filter": {
+        "yearRange": { "from": 1990, "to": 2000 }
+      },
+      "playlistConfig": {
+        "shuffle": true,
+        "maxSongs": 200,
+        "jingleEvery": 4
+      }
+    },
+    {
+      "id": "party",
+      "title": "Party",
+      "description": "High energy dance & party music",
+      "sortOrder": 5,
+      "isActive": true,
+      "filter": {
+        "mood": ["party"]
+      },
+      "playlistConfig": {
+        "shuffle": true,
+        "maxSongs": 300,
+        "jingleEvery": 4
+      }
+    },
+    {
+      "id": "hiphop_rnb",
+      "title": "Hip-Hop / R&B",
+      "description": "Persian Hip-Hop and R&B vibes",
+      "sortOrder": 6,
+      "isActive": true,
+      "filter": {
+        "type": ["hiphop", "rap", "rnb"]
+      },
+      "playlistConfig": {
+        "shuffle": true,
+        "maxSongs": 300,
+        "jingleEvery": 4
+      }
+    },
+    {
+      "id": "bandari",
+      "title": "Bandari",
+      "description": "Persian southern Bandari hits",
+      "sortOrder": 7,
+      "isActive": true,
+      "filter": {
+        "type": ["bandari"]
+      },
+      "playlistConfig": {
+        "shuffle": true,
+        "maxSongs": 200,
+        "jingleEvery": 4
+      }
+    },
+    {
+      "id": "latest",
+      "title": "Latest",
+      "description": "Newest Persian releases",
+      "sortOrder": 8,
+      "isActive": true,
+      "filter": {
+        "latest": true
+      },
+      "playlistConfig": {
+        "shuffle": true,
+        "maxSongs": 200,
+        "jingleEvery": 5
+      }
+    },
+    {
+      "id": "blue_mood",
+      "title": "Blue Mood",
+      "description": "Sad / deep / emotional music",
+      "sortOrder": 9,
+      "isActive": true,
+      "filter": {
+        "mood": ["blue"]
+      },
+      "playlistConfig": {
+        "shuffle": true,
+        "maxSongs": 200,
+        "jingleEvery": 3
+      }
+    },
+    {
+      "id": "motivational",
+      "title": "Motivational",
+      "description": "Energy + motivational Persian tracks",
+      "sortOrder": 10,
+      "isActive": true,
+      "filter": {
+        "mood": ["motivational"]
+      },
+      "playlistConfig": {
+        "shuffle": true,
+        "maxSongs": 200,
+        "jingleEvery": 4
+      }
+    }
+  ],
+
+  "songs": [
+    {
+      "name": "Intro Vibes",
+      "singer": "Nawax Radio",
+      "year": 2024,
+      "type": "electronic",
+      "lengthSec": 85,
+      "mood": ["party"],
+      "tags": ["intro", "nawax", "persian"],
+      "audioUrl": "https://example.com/audio/intro.mp3",
+      "coverUrl": "https://example.com/covers/intro.jpg",
+      "isJingle": true
+    },
+    {
+      "name": "Tehran Nights",
+      "singer": "DJ Arash",
+      "year": 2019,
+      "type": "house",
+      "lengthSec": 230,
+      "mood": ["party"],
+      "tags": ["persian", "night"],
+      "audioUrl": "https://example.com/audio/tehran-nights.mp3",
+      "coverUrl": "https://example.com/covers/tehran-nights.jpg"
+    },
+    {
+      "name": "Blue Sky",
+      "singer": "Sara",
+      "year": 2018,
+      "type": "pop",
+      "lengthSec": 210,
+      "mood": ["blue"],
+      "tags": ["sad", "persian"],
+      "audioUrl": "https://example.com/audio/blue-sky.mp3",
+      "coverUrl": "https://example.com/covers/blue-sky.jpg"
+    },
+    {
+      "name": "Bandari Wave",
+      "singer": "Bandari Stars",
+      "year": 2015,
+      "type": "bandari",
+      "lengthSec": 200,
+      "mood": ["party"],
+      "tags": ["bandari", "south", "persian"],
+      "audioUrl": "https://example.com/audio/bandari-wave.mp3",
+      "coverUrl": "https://example.com/covers/bandari-wave.jpg"
+    }
+  ],
+
+  "users": [
+    {
+      "id": "demo-user",
+      "username": "demo",
+      "email": "demo@nawaxradio.com",
+      "language": "en",
+      "connectedGoogle": false,
+      "lastChannelId": "latest",
+      "autoplayOnStart": true
+    }
+  ]
+}

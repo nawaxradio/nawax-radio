@@ -1,0 +1,48 @@
+[
+    {
+      "name": "Intro Vibes",
+      "singer": "Nawax Radio",
+      "year": 2024,
+      "type": "electronic",
+      "lengthSec": 85,
+      "mood": ["party"],
+      "tags": ["intro", "nawax", "persian"],
+      "audioUrl": "https://example.com/audio/intro.mp3",
+      "coverUrl": "https://example.com/covers/intro.jpg",
+      "isJingle": true
+    },
+    {
+      "name": "Tehran Nights",
+      "singer": "DJ Arash",
+      "year": 2019,
+      "type": "house",
+      "lengthSec": 230,
+      "mood": ["party"],
+      "tags": ["persian", "night"],
+      "audioUrl": "https://example.com/audio/tehran-nights.mp3",
+      "coverUrl": "https://example.com/covers/tehran-nights.jpg"
+    },
+    {
+      "name": "Blue Sky",
+      "singer": "Sara",
+      "year": 2018,
+      "type": "pop",
+      "lengthSec": 210,
+      "mood": ["blue"],
+      "tags": ["sad", "persian"],
+      "audioUrl": "https://example.com/audio/blue-sky.mp3",
+      "coverUrl": "https://example.com/covers/blue-sky.jpg"
+    },
+    {
+      "name": "Bandari Wave",
+      "singer": "Bandari Stars",
+      "year": 2015,
+      "type": "bandari",
+      "lengthSec": 200,
+      "mood": ["party"],
+      "tags": ["bandari", "south", "persian"],
+      "audioUrl": "https://example.com/audio/bandari-wave.mp3",
+      "coverUrl": "https://example.com/covers/bandari-wave.jpg"
+    }
+  ]
+  

@@ -1,0 +1,6 @@
+@NawaxRadio.Api_HostAddress = http://localhost:5246
+
+GET {{NawaxRadio.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

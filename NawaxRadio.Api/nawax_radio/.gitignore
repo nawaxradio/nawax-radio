@@ -1,0 +1,100 @@
+@'
+# =====================
+# Miscellaneous
+# =====================
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+Thumbs.db
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# =====================
+# IntelliJ / IDE
+# =====================
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+**/.vs/
+
+# =====================
+# Flutter / Dart
+# =====================
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+**/build/
+**/doc/api/
+**/.metadata
+
+# =====================
+# Android
+# =====================
+**/android/.gradle/
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/android/local.properties
+
+# =====================
+# iOS / macOS
+# =====================
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/flutter_export_environment.sh
+**/macos/Flutter/ephemeral/
+
+# =====================
+# Windows / Linux
+# =====================
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/
+
+# =====================
+# ASP.NET Core
+# =====================
+**/bin/
+**/obj/
+**/*.user
+**/*.suo
+**/*.userosscache
+**/*.sln.docstates
+
+# =====================
+# Secrets / Configs (IMPORTANT)
+# =====================
+appsettings.Development.json
+**/appsettings.Development.json
+**/*secrets*.json
+firebase-nawax-radio.json.json
+firebase-seed/
+**/firebase*.json
+**/google-services.json
+**/GoogleService-Info.plist
+
+# =====================
+# Project junk / backups
+# =====================
+**/nawax_radio__DUPLICATE_BACKUP/
+**/structure.txt
+
+# =====================
+# Logs / Dumps
+# =====================
+*.stackdump
+*.pid
+*.seed
+*.pid.lock
+'@ | Set-Content -Encoding UTF8 .gitignore
