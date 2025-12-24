@@ -1,16 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 
+import 'package:nawax_radio/config/app_config.dart';
 import 'package:nawax_radio/pages/channels_page.dart';
 import 'package:nawax_radio/pages/settings_page.dart';
 import 'package:nawax_radio/widgets/organic_pulse_visualizer.dart';
-
-// ================== API CONFIG ==================
-const String _apiBaseUrl = 'http://localhost:5246';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -20,36 +19,28 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // کانال فعلی
   String _currentChannelKey = 'main';
 
-  // پلیر
   final AudioPlayer _player = AudioPlayer();
 
-  // اطلاعات آهنگ فعلی
   String _songTitle = '';
   String _songSinger = '';
   bool _isJingle = false;
 
-  // Web autoplay lock
   bool _userUnlockedAudio = false;
-
-  // جلوگیری از درخواست همزمان
   bool _isFetchingNext = false;
+  bool _hasPreparedTrack = false;
 
-  // برای نمایش وضعیت
   bool _isLoadingTrack = false;
   String _errorText = '';
 
   late final StreamSubscription<PlayerState> _playerStateSub;
 
-  // ================== INIT ==================
   @override
   void initState() {
     super.initState();
 
     _playerStateSub = _player.playerStateStream.listen((state) async {
-      // وقتی آهنگ تموم شد، بعدی رو فقط وقتی مجازیم autoplay کنیم بگیر
       if (state.processingState == ProcessingState.completed) {
         if (_userUnlockedAudio) {
           await _playNextFromRadio(autoplay: true);
@@ -57,60 +48,125 @@ class _HomePageState extends State<HomePage> {
       }
     });
 
-    // مهم: روی وب، autoplay ممنوعه. پس اول فقط track رو "آماده" کن (بدون play)
+    // روی وب autoplay ممنوعه: فقط آماده می‌کنیم (بدون play)
     _playNextFromRadio(autoplay: false);
   }
 
-  // ================== RADIO STREAM ==================
+  Uri _radioNowEndpoint() =>
+      Uri.parse('${AppConfig.apiBaseUrl}/radio/$_currentChannelKey/now');
+
+  String _radioStreamUrl() =>
+      '${AppConfig.apiBaseUrl}/radio/$_currentChannelKey/stream';
+
+  // ---------------- JSON helpers ----------------
+  String _s(dynamic v) => (v is String) ? v.trim() : '';
+
+  Map<String, dynamic>? _m(dynamic v) {
+    if (v is Map<String, dynamic>) return v;
+    if (v is Map) return v.map((k, val) => MapEntry(k.toString(), val));
+    return null;
+  }
+
+  Map<String, dynamic> _nowPlayingRoot(Map<String, dynamic> root) {
+    final np = _m(root['nowPlaying']);
+    return np ?? root;
+  }
+
+  void _applyMetadata(Map<String, dynamic> root) {
+    final np = _nowPlayingRoot(root);
+
+    // ✅ اولویت: متادیتای واقعی که باید بک‌اند بده
+    final title = _s(np['title']);
+    final artist = _s(np['artist']);
+
+    // fallback فعلی بک‌اند
+    final name = _s(np['name']);
+    final singer = _s(np['singer']);
+
+    final isJingle = (np['isJingle'] is bool)
+        ? (np['isJingle'] as bool)
+        : false;
+
+    String finalTitle = title.isNotEmpty ? title : name;
+    String finalArtist = artist.isNotEmpty ? artist : singer;
+
+    if (title.isEmpty && finalTitle.isNotEmpty) {
+      finalTitle = _prettifyFromFilename(finalTitle);
+    }
+
+    _songTitle = finalTitle;
+    _songSinger = finalArtist.isNotEmpty ? finalArtist : 'Unknown';
+    _isJingle = isJingle == true;
+  }
+
+  String _prettifyFromFilename(String raw) {
+    var s = raw;
+
+    s = s.replaceAll('.mp3', '').replaceAll('.wav', '').replaceAll('.m4a', '');
+    s = s.replaceAll(RegExp(r'[_\-]+'), ' ').trim();
+    s = s.replaceAll(RegExp(r'\b(320|256|192|128)\b'), '');
+    s = s.replaceAll(
+      RegExp(
+        r'\b(official|lyrics|lyric|audio|video|remix|mix)\b',
+        caseSensitive: false,
+      ),
+      '',
+    );
+    s = s.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+
+    return s;
+  }
+
+  // ---------------- RADIO FLOW ----------------
   Future<void> _playNextFromRadio({required bool autoplay}) async {
     if (_isFetchingNext) return;
     _isFetchingNext = true;
 
-    setState(() {
-      _isLoadingTrack = true;
-      _errorText = '';
-    });
+    if (mounted) {
+      setState(() {
+        _isLoadingTrack = true;
+        _errorText = '';
+      });
+    }
 
     try {
-      final url = Uri.parse('$_apiBaseUrl/radio/$_currentChannelKey/stream');
-      final res = await http.get(url);
-
-      if (res.statusCode != 200) {
-        setState(() {
-          _errorText = 'Radio API error (${res.statusCode})';
-        });
+      final nowRes = await http.get(_radioNowEndpoint());
+      if (nowRes.statusCode != 200) {
+        if (mounted) {
+          setState(() {
+            _errorText = 'Radio NOW error (${nowRes.statusCode})';
+          });
+        }
         return;
       }
 
-      final data = json.decode(res.body) as Map<String, dynamic>;
+      debugPrint('apiBaseUrl => ${AppConfig.apiBaseUrl}');
+      debugPrint('NOW BODY => ${nowRes.body}');
 
-      final audioUrl = data['audioUrl'] as String?;
-      if (audioUrl == null || audioUrl.isEmpty) {
-        setState(() {
-          _errorText = 'No audioUrl from server';
-        });
-        return;
-      }
+      final data = json.decode(nowRes.body) as Map<String, dynamic>;
 
-      // metadata
-      _songTitle = (data['name'] ?? '').toString();
-      _songSinger = (data['singer'] ?? '').toString();
-      _isJingle = (data['isJingle'] ?? false) == true;
+      // 1) metadata
+      _applyMetadata(data);
 
-      // آماده کردن آهنگ
-      await _player.setUrl(audioUrl);
+      // 2) ✅ همیشه از استریم بک‌اند پخش کن (Web + Mobile)
+      final urlForPlayer = Uri.encodeFull(_radioStreamUrl());
 
-      // اگر اجازه autoplay داریم، پلی کن
+      _hasPreparedTrack = false;
+      await _player.setUrl(urlForPlayer);
+      _hasPreparedTrack = true;
+
       if (autoplay && _userUnlockedAudio) {
         await _safePlay();
       }
 
-      setState(() {});
+      if (mounted) setState(() {});
     } catch (e) {
-      setState(() {
-        _errorText = 'radio error: $e';
-      });
-      debugPrint('❌ radio error: $e');
+      debugPrint('❌ stream prepare error: $e');
+      if (mounted) {
+        setState(() {
+          _errorText = 'stream prepare error: $e\nurl: ${_radioStreamUrl()}';
+        });
+      }
     } finally {
       _isFetchingNext = false;
       if (mounted) {
@@ -121,35 +177,41 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // یک پلی امن: اگر وب اجازه نداد، unlock رو false نگه می‌داریم
   Future<void> _safePlay() async {
     try {
       await _player.play();
     } catch (e) {
-      // روی وب اگر بدون تعامل user پلی کنیم اینجا می‌خوره
       debugPrint('❌ play blocked: $e');
-      setState(() {
-        _errorText =
-            'Audio is blocked by browser. Tap Play once to start the radio.';
-      });
+      if (mounted) {
+        setState(() {
+          _errorText = kIsWeb
+              ? 'Browser blocked audio. Tap Play once.'
+              : 'Play error: $e';
+        });
+      }
     }
   }
 
-  // اولین تعامل کاربر برای باز شدن autoplay وب
   Future<void> _unlockAndStart() async {
     if (_userUnlockedAudio) return;
 
-    setState(() {
-      _errorText = '';
-    });
+    if (mounted) {
+      setState(() {
+        _errorText = '';
+      });
+    }
 
-    // تلاش برای پلی: اگر آماده نباشه، اول یک track بگیر
-    if (_player.duration == null) {
+    if (_isFetchingNext) {
+      await Future.delayed(const Duration(milliseconds: 150));
+    }
+
+    if (!_hasPreparedTrack) {
       await _playNextFromRadio(autoplay: false);
     }
 
     _userUnlockedAudio = true;
     await _safePlay();
+
     if (mounted) setState(() {});
   }
 
@@ -162,7 +224,6 @@ class _HomePageState extends State<HomePage> {
 
   String get _channelTitle => _currentChannelKey.toUpperCase();
 
-  // ================== PROGRESS BAR ==================
   Widget _buildProgressBar() {
     return StreamBuilder<Duration>(
       stream: _player.positionStream,
@@ -187,7 +248,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ================== DISPOSE ==================
   @override
   void dispose() {
     _playerStateSub.cancel();
@@ -195,7 +255,6 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  // ================== BUILD ==================
   @override
   Widget build(BuildContext context) {
     const nawaxOrange = Color(0xFFFF481F);
@@ -207,7 +266,6 @@ class _HomePageState extends State<HomePage> {
           children: [
             const SizedBox(height: 16),
 
-            // -------- Header --------
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -265,6 +323,7 @@ class _HomePageState extends State<HomePage> {
 
             Text(
               _songTitle,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -340,7 +399,6 @@ class _HomePageState extends State<HomePage> {
 
             const SizedBox(height: 16),
 
-            // -------- Controls --------
             Container(
               height: 80,
               margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -366,7 +424,6 @@ class _HomePageState extends State<HomePage> {
 
                       return GestureDetector(
                         onTap: () async {
-                          // اگر اولین بار روی وب است، اول unlock کن
                           if (!_userUnlockedAudio) {
                             await _unlockAndStart();
                             return;
@@ -414,8 +471,9 @@ class _HomePageState extends State<HomePage> {
                 if (selected != null && selected != _currentChannelKey) {
                   _currentChannelKey = selected;
 
-                  // کانال عوض شد: یک track جدید بگیر
-                  // اگر قبلا unlock شده بود، autoplay کن
+                  await _player.stop();
+                  _hasPreparedTrack = false;
+
                   await _playNextFromRadio(autoplay: _userUnlockedAudio);
 
                   if (mounted) setState(() {});

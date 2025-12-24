@@ -1,194 +1,231 @@
-// Services/FirestoreSongRepository.cs
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Firestore;
-using Google.Cloud.Firestore.V1;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using NawaxRadio.Api.Domain;
-using NawaxRadio.Api.Options;
 
 namespace NawaxRadio.Api.Services
 {
-    public interface IFirestoreSongRepository
-    {
-        Task SaveAsync(Song song, CancellationToken cancellationToken = default);
-        Task<List<Song>> GetAllAsync(CancellationToken cancellationToken = default);
-    }
-
     public class FirestoreSongRepository : IFirestoreSongRepository
     {
+        private readonly ILogger<FirestoreSongRepository> _logger;
         private readonly FirestoreDb _db;
+        private readonly string _collection;
 
-        public FirestoreSongRepository(IOptions<FirebaseStorageOptions> options)
+        public FirestoreSongRepository(IConfiguration config, ILogger<FirestoreSongRepository> logger)
         {
-            var opt = options.Value;
+            _logger = logger;
 
-            GoogleCredential credential;
-            if (!string.IsNullOrWhiteSpace(opt.CredentialsPath))
+            // ✅ Collection name (default: songs)
+            _collection = Environment.GetEnvironmentVariable("FIRESTORE_SONGS_COLLECTION")
+                          ?? config["Firestore:SongsCollection"]
+                          ?? "songs";
+
+            // ✅ ProjectId (اول env، بعد config، بعد fallback)
+            var projectId =
+                Environment.GetEnvironmentVariable("GOOGLE_CLOUD_PROJECT")
+                ?? Environment.GetEnvironmentVariable("GCLOUD_PROJECT")
+                ?? config["Firebase:ProjectId"]
+                ?? config["GoogleCloud:ProjectId"];
+
+            if (string.IsNullOrWhiteSpace(projectId))
             {
-                credential = GoogleCredential.FromFile(opt.CredentialsPath);
+                throw new InvalidOperationException(
+                    "ProjectId is missing. Set GOOGLE_CLOUD_PROJECT or Firebase:ProjectId."
+                );
             }
-            else
-            {
-                credential = GoogleCredential.GetApplicationDefault();
-            }
 
-            var clientBuilder = new FirestoreClientBuilder
-            {
-                Credential = credential
-            };
+            _db = FirestoreDb.Create(projectId);
 
-            var firestoreClient = clientBuilder.Build();
-
-            _db = FirestoreDb.Create(opt.ProjectId, firestoreClient);
+            _logger.LogInformation(
+                "FirestoreSongRepository initialized. projectId={ProjectId}, collection={Collection}",
+                projectId, _collection
+            );
         }
 
-        public async Task SaveAsync(Song song, CancellationToken cancellationToken = default)
+        public async Task<List<Song>> GetAllAsync(CancellationToken ct)
+        {
+            try
+            {
+                var col = _db.Collection(_collection);
+
+                // اگر فقط Active ها رو می‌خوای:
+                // var snap = await col.WhereEqualTo("isActive", true).GetSnapshotAsync(ct);
+
+                var snap = await col.GetSnapshotAsync(ct);
+
+                var list = new List<Song>(snap.Count);
+
+                foreach (var doc in snap.Documents)
+                {
+                    if (ct.IsCancellationRequested) break;
+
+                    var song = Map(doc);
+                    if (song != null)
+                        list.Add(song);
+                }
+
+                _logger.LogInformation("Firestore GetAllAsync done. fetched={Count}", list.Count);
+                return list;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Firestore GetAllAsync failed.");
+                return new List<Song>();
+            }
+        }
+
+        // ✅ ct اختیاری شد (مشکل UploadEndpoints حل شد)
+        public async Task SaveAsync(Song song, CancellationToken ct = default)
         {
             if (song == null) throw new ArgumentNullException(nameof(song));
 
-            if (string.IsNullOrWhiteSpace(song.Id))
-                song.Id = Guid.NewGuid().ToString();
-
-            if (song.CreatedAt == default)
-                song.CreatedAt = DateTime.UtcNow;
-
-            var doc = new Dictionary<string, object?>
+            try
             {
-                ["id"] = song.Id,
-                ["name"] = song.Name,
-                ["singer"] = song.Singer,
-                ["year"] = song.Year,
-                ["type"] = song.Type,
-                ["lengthSec"] = song.LengthSec,
-                ["mood"] = song.Mood,
-                ["tags"] = song.Tags,
-                ["audioUrl"] = song.AudioUrl,
-                ["coverUrl"] = song.CoverUrl,
-                ["language"] = song.Language,
-                ["isJingle"] = song.IsJingle,
-                ["isActive"] = song.IsActive,
-                ["bitrateKbps"] = song.BitrateKbps,
-                ["fileSizeBytes"] = song.FileSizeBytes,
-                ["uploadedBy"] = song.UploadedBy,
-                ["decade"] = GetDecade(song.Year),
-                ["createdAt"] = Timestamp.FromDateTime(song.CreatedAt.ToUniversalTime())
-            };
+                // اگر Id خالی بود، بساز
+                if (string.IsNullOrWhiteSpace(song.Id))
+                    song.Id = Guid.NewGuid().ToString();
 
-            await _db.Collection("songs")
-                     .Document(song.Id)
-                     .SetAsync(doc, cancellationToken: cancellationToken);
-        }
+                // Defaults
+                song.CreatedAt = song.CreatedAt == default ? DateTime.UtcNow : song.CreatedAt;
+                song.Mood ??= new List<string>();
+                song.Tags ??= new List<string>();
 
-        public async Task<List<Song>> GetAllAsync(CancellationToken cancellationToken = default)
-        {
-            var snap = await _db.Collection("songs").GetSnapshotAsync(cancellationToken);
+                // ✅ اگر از Upload/Firestore نیومده بود، فعالش کن
+                // (اگر عمداً false گذاشته باشی، بهتره از همونجا false بیاد)
+                if (song.IsActive == false)
+                    song.IsActive = true;
 
-            var list = new List<Song>();
+                var col = _db.Collection(_collection);
+                var doc = col.Document(song.Id);
 
-            foreach (var doc in snap.Documents)
-            {
-                var d = doc.ToDictionary();
-
-                string GetStr(string key) =>
-                    d.TryGetValue(key, out var v) ? (v?.ToString() ?? "") : "";
-
-                int GetInt(string key)
+                var data = new Dictionary<string, object?>
                 {
-                    if (!d.TryGetValue(key, out var v) || v == null) return 0;
-                    if (v is long l) return (int)l;
-                    if (v is int i) return i;
-                    if (int.TryParse(v.ToString(), out var x)) return x;
-                    return 0;
-                }
-
-                bool GetBool(string key, bool def = false)
-                {
-                    if (!d.TryGetValue(key, out var v) || v == null) return def;
-                    if (v is bool b) return b;
-                    if (bool.TryParse(v.ToString(), out var x)) return x;
-                    return def;
-                }
-
-                long? GetLongNullable(string key)
-                {
-                    if (!d.TryGetValue(key, out var v) || v == null) return null;
-                    if (v is long l) return l;
-                    if (v is int i) return i;
-                    if (long.TryParse(v.ToString(), out var x)) return x;
-                    return null;
-                }
-
-                int? GetIntNullable(string key)
-                {
-                    if (!d.TryGetValue(key, out var v) || v == null) return null;
-                    if (v is long l) return (int)l;
-                    if (v is int i) return i;
-                    if (int.TryParse(v.ToString(), out var x)) return x;
-                    return null;
-                }
-
-                List<string> GetStringList(string key)
-                {
-                    if (!d.TryGetValue(key, out var v) || v == null) return new List<string>();
-                    if (v is IEnumerable<object> arr)
-                    {
-                        var res = new List<string>();
-                        foreach (var item in arr)
-                            res.Add(item?.ToString() ?? "");
-                        return res;
-                    }
-                    return new List<string>();
-                }
-
-                DateTime createdAt = DateTime.UtcNow;
-                if (d.TryGetValue("createdAt", out var createdObj) && createdObj != null)
-                {
-                    // ✅ اینجا مشکل CS0077 حل شد: as نزن
-                    if (createdObj is Timestamp ts)
-                        createdAt = ts.ToDateTime().ToUniversalTime();
-                    else if (DateTime.TryParse(createdObj.ToString(), out var dt))
-                        createdAt = dt.ToUniversalTime();
-                }
-
-                var song = new Song
-                {
-                    Id = GetStr("id"),
-                    Name = GetStr("name"),
-                    Singer = GetStr("singer"),
-                    Year = GetInt("year"),
-                    Type = GetStr("type"),
-                    LengthSec = GetInt("lengthSec"),
-                    Mood = GetStringList("mood"),
-                    Tags = GetStringList("tags"),
-                    AudioUrl = GetStr("audioUrl"),
-                    CoverUrl = GetStr("coverUrl"),
-                    Language = GetStr("language"),
-                    IsJingle = GetBool("isJingle", false),
-                    IsActive = GetBool("isActive", true),
-                    BitrateKbps = GetIntNullable("bitrateKbps"),
-                    FileSizeBytes = GetLongNullable("fileSizeBytes"),
-                    UploadedBy = GetStr("uploadedBy"),
-                    CreatedAt = createdAt
+                    ["name"] = song.Name ?? "",
+                    ["singer"] = song.Singer ?? "",
+                    ["type"] = song.Type ?? "",
+                    ["year"] = song.Year,
+                    ["lengthSec"] = song.LengthSec,
+                    ["audioUrl"] = song.AudioUrl ?? "",
+                    ["isActive"] = song.IsActive,
+                    ["mood"] = song.Mood,
+                    ["tags"] = song.Tags,
+                    ["createdAt"] = song.CreatedAt
                 };
 
-                if (string.IsNullOrWhiteSpace(song.Id))
-                    song.Id = doc.Id;
+                await doc.SetAsync(data, cancellationToken: ct);
 
-                list.Add(song);
+                _logger.LogInformation("Firestore SaveAsync OK. id={Id}", song.Id);
             }
-
-            return list;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Firestore SaveAsync failed. id={Id}", song?.Id);
+                throw;
+            }
         }
 
-        private static string GetDecade(int year)
+        private Song? Map(DocumentSnapshot doc)
         {
-            if (year <= 0) return "unknown";
-            var decadeStart = (year / 10) * 10;
-            return $"{decadeStart}s";
+            if (doc == null || !doc.Exists) return null;
+
+            var d = doc.ToDictionary();
+
+            string GetStr(params string[] keys)
+            {
+                foreach (var k in keys)
+                {
+                    if (d.TryGetValue(k, out var v) && v != null)
+                        return v.ToString() ?? "";
+                }
+                return "";
+            }
+
+            int GetInt(params string[] keys)
+            {
+                foreach (var k in keys)
+                {
+                    if (d.TryGetValue(k, out var v) && v != null)
+                    {
+                        if (v is int i) return i;
+                        if (v is long l) return (int)l;
+                        if (int.TryParse(v.ToString(), out var p)) return p;
+                    }
+                }
+                return 0;
+            }
+
+            bool GetBoolDefaultTrue(params string[] keys)
+            {
+                foreach (var k in keys)
+                {
+                    if (d.TryGetValue(k, out var v) && v != null)
+                    {
+                        if (v is bool b) return b;
+                        if (bool.TryParse(v.ToString(), out var p)) return p;
+                    }
+                }
+                // ✅ اگر فیلد نبود: TRUE
+                return true;
+            }
+
+            DateTime GetDateUtc(params string[] keys)
+            {
+                foreach (var k in keys)
+                {
+                    if (d.TryGetValue(k, out var v) && v != null)
+                    {
+                        if (v is Timestamp ts) return ts.ToDateTime().ToUniversalTime();
+                        if (v is DateTime dt) return dt.ToUniversalTime();
+                        if (DateTime.TryParse(v.ToString(), out var parsed))
+                            return DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
+                    }
+                }
+                return DateTime.UtcNow;
+            }
+
+            List<string> GetStringList(params string[] keys)
+            {
+                foreach (var k in keys)
+                {
+                    if (d.TryGetValue(k, out var v) && v != null)
+                    {
+                        if (v is IEnumerable<object> arr)
+                            return arr.Select(x => x?.ToString() ?? "")
+                                      .Where(x => !string.IsNullOrWhiteSpace(x))
+                                      .ToList();
+
+                        if (v is IEnumerable<string> sarr)
+                            return sarr.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+                    }
+                }
+                return new List<string>();
+            }
+
+            var song = new Song
+            {
+                Id = doc.Id,
+                Name = GetStr("name", "title", "songName"),
+                Singer = GetStr("singer", "artist"),
+                Type = GetStr("type", "genre"),
+                Year = GetInt("year"),
+                LengthSec = GetInt("lengthSec", "duration", "durationSec"),
+                AudioUrl = GetStr("audioUrl", "url", "streamUrl"),
+                IsActive = GetBoolDefaultTrue("isActive", "active"),
+                Mood = GetStringList("mood", "moods"),
+                Tags = GetStringList("tags"),
+                CreatedAt = GetDateUtc("createdAt", "created_at", "created")
+            };
+
+            if (string.IsNullOrWhiteSpace(song.AudioUrl))
+            {
+                _logger.LogWarning("Song {Id} has empty AudioUrl (doc={DocId})", song.Id, doc.Id);
+            }
+
+            return song;
         }
     }
 }

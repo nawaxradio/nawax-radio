@@ -6,9 +6,22 @@ using NawaxRadio.Api.Domain;
 
 namespace NawaxRadio.Api.Services
 {
+    /// <summary>
+    /// Runtime in-memory cache for songs.
+    /// IMPORTANT:
+    /// - No default seeding (so we never force sample.mp3).
+    /// - Songs are expected to be synced from Firestore via StartupSongSyncService or /debug/sync.
+    /// </summary>
     public class InMemorySongService : ISongService
     {
         private readonly List<Song> _songs = new();
+
+        public InMemorySongService()
+        {
+            // ✅ NO automatic seed here.
+            // If you ever need a seed song for local testing, use:
+            // SEED_TEST_SONG=true and call /debug/seed-inmemory
+        }
 
         public IEnumerable<Song> GetAll()
         {
@@ -20,7 +33,7 @@ namespace NawaxRadio.Api.Services
             if (string.IsNullOrWhiteSpace(id))
                 return null;
 
-            return _songs.FirstOrDefault(s => s.Id == id);
+            return _songs.FirstOrDefault(s => s.Id == id && s.IsActive);
         }
 
         public IEnumerable<Song> GetByChannel(Channel channel)
@@ -28,45 +41,23 @@ namespace NawaxRadio.Api.Services
             if (channel == null)
                 return Enumerable.Empty<Song>();
 
-            var filter = channel.Filter;
-            var playlistConfig = channel.PlaylistConfig;
+            var key = (channel.Key ?? "").Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(key))
+                return Enumerable.Empty<Song>();
 
-            IEnumerable<Song> query = _songs.Where(s => s.IsActive);
-
-            if (filter != null)
+            // ✅ Main channel = all active songs (acts as "mix")
+            if (key == "main")
             {
-                if (filter.Type is { Count: > 0 })
-                {
-                    query = query.Where(s => filter.Type.Contains(s.Type));
-                }
-
-                if (filter.Mood is { Count: > 0 })
-                {
-                    query = query.Where(s => s.Mood.Any(m => filter.Mood.Contains(m)));
-                }
-
-                if (filter.Latest)
-                {
-                    query = query.OrderByDescending(s => s.CreatedAt);
-                }
-
-                if (filter.YearFrom.HasValue)
-                {
-                    query = query.Where(s => s.Year >= filter.YearFrom.Value);
-                }
-
-                if (filter.YearTo.HasValue)
-                {
-                    query = query.Where(s => s.Year <= filter.YearTo.Value);
-                }
+                return _songs
+                    .Where(s => s.IsActive)
+                    .ToList();
             }
 
-            if (playlistConfig?.MaxSongs is > 0)
-            {
-                query = query.Take(playlistConfig.MaxSongs);
-            }
-
-            return query.ToList();
+            return _songs
+                .Where(s => s.IsActive)
+                .Where(s => s.Mood != null &&
+                            s.Mood.Any(m => (m ?? "").Trim().ToLowerInvariant() == key))
+                .ToList();
         }
 
         public Song Add(Song song)
@@ -75,23 +66,31 @@ namespace NawaxRadio.Api.Services
                 throw new ArgumentNullException(nameof(song));
 
             if (string.IsNullOrWhiteSpace(song.Id))
-            {
                 song.Id = Guid.NewGuid().ToString();
-            }
 
-            song.CreatedAt = song.CreatedAt == default ? DateTime.UtcNow : song.CreatedAt;
+            if (song.CreatedAt == default)
+                song.CreatedAt = DateTime.UtcNow;
 
-            _songs.Add(song);
+            // ✅ Upsert behavior: avoid duplicates if same Id comes again from Firestore sync
+            var existingIndex = _songs.FindIndex(x => x.Id == song.Id);
+            if (existingIndex >= 0)
+                _songs[existingIndex] = song;
+            else
+                _songs.Add(song);
+
             return song;
         }
 
         public bool Delete(string id)
         {
-            var song = GetById(id);
-            if (song == null)
+            if (string.IsNullOrWhiteSpace(id))
                 return false;
 
-            _songs.Remove(song);
+            var s = _songs.FirstOrDefault(x => x.Id == id);
+            if (s == null)
+                return false;
+
+            _songs.Remove(s);
             return true;
         }
     }

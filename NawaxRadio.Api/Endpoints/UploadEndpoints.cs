@@ -138,6 +138,7 @@ namespace NawaxRadio.Api.Endpoints
 
                     var created = songService.Add(song);
 
+                    // ✅ keep this (firestore sync)
                     await firestoreSongRepository.SaveAsync(created);
 
                     return Results.Ok(created);
@@ -155,61 +156,9 @@ namespace NawaxRadio.Api.Endpoints
                 }
             });
 
-            var songsGroup = app.MapGroup("/songs");
-
-            songsGroup.MapGet("/", ([FromServices] ISongService songService) =>
-            {
-                var songs = songService.GetAll();
-                return Results.Ok(songs);
-            });
-
-            songsGroup.MapGet("/decade/{decade}", (
-                string decade,
-                [FromServices] ISongService songService) =>
-            {
-                var all = songService.GetAll();
-
-                var normalizedDecade = decade.Trim().ToLowerInvariant();
-
-                var filtered = all.Where(s =>
-                {
-                    if (s.Year <= 0) return false;
-
-                    var decadeStart = (s.Year / 10) * 10;
-                    var key = $"{decadeStart}s".ToLowerInvariant();
-                    return key == normalizedDecade;
-                }).ToList();
-
-                return Results.Ok(filtered);
-            });
-
-            songsGroup.MapGet("/type/{type}", (
-                string type,
-                [FromServices] ISongService songService) =>
-            {
-                var all = songService.GetAll();
-                var filtered = all
-                    .Where(s =>
-                        !string.IsNullOrWhiteSpace(s.Type) &&
-                        s.Type.Equals(type, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-                return Results.Ok(filtered);
-            });
-
-            songsGroup.MapGet("/mood/{mood}", (
-                string mood,
-                [FromServices] ISongService songService) =>
-            {
-                var all = songService.GetAll();
-                var filtered = all
-                    .Where(s =>
-                        s.Mood != null &&
-                        s.Mood.Any(m => m.Equals(mood, StringComparison.OrdinalIgnoreCase)))
-                    .ToList();
-
-                return Results.Ok(filtered);
-            });
+            // ✅ IMPORTANT:
+            // Do NOT map /songs endpoints here (causes AmbiguousMatch).
+            // All /songs routes live in SongEndpoints.cs only.
 
             return app;
         }

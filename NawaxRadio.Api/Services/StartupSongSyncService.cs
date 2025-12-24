@@ -1,4 +1,6 @@
+// Services/StartupSongSyncService.cs
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
@@ -8,46 +10,44 @@ namespace NawaxRadio.Api.Services
 {
     public class StartupSongSyncService : BackgroundService
     {
+        private readonly ILogger<StartupSongSyncService> _logger;
         private readonly IFirestoreSongRepository _repo;
         private readonly ISongService _songService;
-        private readonly ILogger<StartupSongSyncService> _logger;
 
         public StartupSongSyncService(
+            ILogger<StartupSongSyncService> logger,
             IFirestoreSongRepository repo,
-            ISongService songService,
-            ILogger<StartupSongSyncService> logger)
+            ISongService songService)
         {
+            _logger = logger;
             _repo = repo;
             _songService = songService;
-            _logger = logger;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             try
             {
-                _logger.LogInformation("StartupSongSyncService: syncing Firestore -> InMemory ...");
+                _logger.LogInformation("🔁 StartupSongSyncService started...");
 
-                var songs = await _repo.GetAllAsync(stoppingToken);
+                var fetched = await _repo.GetAllAsync(stoppingToken);
 
-                int added = 0;
-                foreach (var s in songs)
+                int upserted = 0;
+                foreach (var s in fetched)
                 {
-                    if (stoppingToken.IsCancellationRequested) break;
-
-                    var exists = _songService.GetById(s.Id);
-                    if (exists == null)
-                    {
-                        _songService.Add(s);
-                        added++;
-                    }
+                    if (s == null) continue;
+                    _songService.Add(s); // upsert in InMemorySongService
+                    upserted++;
                 }
 
-                _logger.LogInformation("StartupSongSyncService: sync done. loaded={Count}, added={Added}", songs.Count, added);
+                _logger.LogInformation("✅ StartupSongSyncService done. fetched={fetched} upserted={upserted} inMemoryActive={count}",
+                    fetched?.Count ?? 0,
+                    upserted,
+                    _songService.GetAll().Count());
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "StartupSongSyncService: sync failed");
+                _logger.LogError(ex, "❌ StartupSongSyncService failed.");
             }
         }
     }

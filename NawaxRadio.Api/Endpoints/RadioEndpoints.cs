@@ -1,168 +1,308 @@
 // Endpoints/RadioEndpoints.cs
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+using System;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using NawaxRadio.Api.Domain;
+using Microsoft.Extensions.Logging;
 using NawaxRadio.Api.Services;
+using NawaxRadio.Api.Domain;
 
 namespace NawaxRadio.Api.Endpoints
 {
     public static class RadioEndpoints
     {
-        private static readonly ConcurrentDictionary<string, LinkedList<string>> LastPlayedByChannel = new();
-        private static readonly ConcurrentDictionary<string, int> PlayCountByChannel = new();
-
-        private const int HistorySize = 5;
-        private const int PlaysPerJingle = 5;
+        private static readonly ThreadLocal<Random> _rng = new(() => new Random());
 
         public static IEndpointRouteBuilder MapRadioEndpoints(this IEndpointRouteBuilder app)
         {
-            var group = app.MapGroup("/radio")
-                           .WithTags("Radio");
+            // ✅ JSON "now"
+            app.MapGet("/radio/{channelKey}/now", Now);
 
-            group.MapGet("/{channel}/stream", HandleStream);
+            // ✅ ONE route for both GET + HEAD (prevents 405 forever)
+            app.MapMethods("/radio/{channelKey}/stream", new[] { "GET", "HEAD" }, StreamGetOrHead);
 
             return app;
         }
 
-        private static IResult HandleStream(string channel, ISongService songService)
+        // -----------------------------
+        // Shared selection logic
+        // -----------------------------
+        private static bool TryPickSong(
+            string channelKey,
+            ISongService songs,
+            IChannelService channels,
+            out Song? picked,
+            out string resolvedChannelKey,
+            out object? errorPayload
+        )
         {
-            var allSongs = songService.GetAll()
-                .Where(s => s.IsActive && !string.IsNullOrWhiteSpace(s.AudioUrl))
-                .ToList();
+            picked = null;
+            errorPayload = null;
 
-            if (allSongs.Count == 0)
+            var key = (channelKey ?? "").Trim().ToLowerInvariant();
+            resolvedChannelKey = key;
+
+            if (string.IsNullOrWhiteSpace(key))
             {
-                return Results.Problem("No songs available", statusCode: 503);
+                errorPayload = new { error = "invalid_channelKey" };
+                return false;
             }
 
-            var shouldPlayJingle = ShouldPlayJingle(channel);
-
-            var candidates = FilterSongsForChannel(allSongs, channel, shouldPlayJingle).ToList();
-
-            if (candidates.Count == 0)
+            // ✅ main = mix of all active songs
+            if (key == "main")
             {
-                candidates = FilterSongsForChannel(allSongs, channel, shouldPlayJingle: false).ToList();
-
-                if (candidates.Count == 0)
+                var allActive = songs.GetAll().ToList();
+                if (allActive.Count == 0)
                 {
-                    candidates = allSongs;
+                    errorPayload = new
+                    {
+                        error = "no_songs_in_memory",
+                        channelKey = "main",
+                        inMemoryTotal = 0
+                    };
+                    return false;
                 }
+
+                picked = allActive[_rng.Value!.Next(0, allActive.Count)];
+                resolvedChannelKey = "main";
+                return true;
             }
 
-            var picked = PickNonRepeatedSong(channel, candidates);
-
-            if (picked is null || string.IsNullOrWhiteSpace(picked.AudioUrl))
+            var ch = channels.GetBySlug(key);
+            if (ch == null)
             {
-                return Results.Problem("No suitable song found", statusCode: 503);
+                errorPayload = new { error = "channel_not_found", channelKey = key };
+                return false;
             }
 
-            RegisterPlay(channel, picked);
+            resolvedChannelKey = ch.Key ?? key;
+
+            var list = songs.GetByChannel(ch).ToList();
+            if (list.Count == 0)
+            {
+                var all = songs.GetAll().ToList();
+                errorPayload = new
+                {
+                    error = "no_songs_for_channel",
+                    channelKey = key,
+                    channelResolvedKey = resolvedChannelKey,
+                    inMemoryTotal = all.Count,
+                    hint = "Check Song.Mood contains channelKey (e.g., 'rap', 'genz', etc.). For main we return all active songs.",
+                    sample = all.Take(5)
+                };
+                return false;
+            }
+
+            picked = list[_rng.Value!.Next(0, list.Count)];
+            return true;
+        }
+
+        private static IResult Now(
+            string channelKey,
+            ISongService songs,
+            IChannelService channels)
+        {
+            if (!TryPickSong(channelKey, songs, channels, out var s, out var resolvedChannel, out var err))
+            {
+                var errCode = (err as dynamic)?.error as string;
+
+                if (string.Equals(errCode, "invalid_channelKey", StringComparison.OrdinalIgnoreCase))
+                    return Results.BadRequest(err);
+
+                if (string.Equals(errCode, "channel_not_found", StringComparison.OrdinalIgnoreCase))
+                    return Results.NotFound(err);
+
+                return Results.Json(err, statusCode: 503);
+            }
+
+            var url = CleanUrl(s!.AudioUrl);
+            if (string.IsNullOrWhiteSpace(url))
+                return Results.Json(new { error = "empty_audioUrl", songId = s.Id }, statusCode: 502);
 
             return Results.Ok(new
             {
-                audioUrl = picked.AudioUrl,
-                songId = picked.Id,
-                name = picked.Name,
-                singer = picked.Singer,
-                channel,
-                isJingle = picked.IsJingle
+                audioUrl = url,
+                songId = s.Id,
+                name = s.Name,
+                singer = s.Singer,
+                channel = resolvedChannel,
+                isJingle = s.IsJingle
             });
         }
 
-        private static IEnumerable<Song> FilterSongsForChannel(
-            IReadOnlyList<Song> allSongs,
-            string channel,
-            bool shouldPlayJingle)
+        private static string CleanUrl(string? url)
         {
-            var baseQuery = allSongs.AsEnumerable();
+            if (string.IsNullOrWhiteSpace(url)) return "";
 
-            if (shouldPlayJingle)
-            {
-                baseQuery = baseQuery.Where(s => s.IsJingle);
-            }
-            else
-            {
-                baseQuery = baseQuery.Where(s => !s.IsJingle);
-            }
+            url = url.Trim().Replace("\r", "").Replace("\n", "");
 
-            channel = channel.ToLowerInvariant();
+            // ✅ ensure alt=media exists
+            if (!url.Contains("alt=media", StringComparison.OrdinalIgnoreCase))
+                url += url.Contains('?') ? "&alt=media" : "?alt=media";
 
-            return channel switch
-            {
-                "ghery" => baseQuery.Where(s =>
-                    s.Mood.Contains("ghery") || s.Mood.Contains("blue") || s.Mood.Contains("dep")),
-
-                "party" => baseQuery.Where(s =>
-                    s.Mood.Contains("party")),
-
-                "genz" => baseQuery.Where(s =>
-                    s.Mood.Contains("genz") ||
-                    s.Type == "trap" ||
-                    s.Type == "modern"),
-
-                "rap" => baseQuery.Where(s =>
-                    s.Type == "rap" || s.Type == "hiphop"),
-
-                "bandari" => baseQuery.Where(s =>
-                    s.Type == "bandari" || s.Type == "jonobi"),
-
-                "dep" => baseQuery.Where(s =>
-                    s.Mood.Contains("dep") || s.Mood.Contains("blue")),
-
-                "energy" => baseQuery.Where(s =>
-                    s.Mood.Contains("energy")),
-
-                "latest" => baseQuery
-                    .OrderByDescending(s => s.CreatedAt)
-                    .Take(200),
-
-                "main" or _ => baseQuery
-            };
+            return url;
         }
 
-        private static Song? PickNonRepeatedSong(string channel, IList<Song> candidates)
+        // -----------------------------
+        // GET + HEAD unified handler
+        // -----------------------------
+        private static async Task StreamGetOrHead(
+            HttpContext ctx,
+            string channelKey,
+            ISongService songs,
+            IChannelService channels,
+            IHttpClientFactory httpClientFactory,
+            ILoggerFactory lf,
+            CancellationToken ct)
         {
-            var lastPlayed = LastPlayedByChannel.GetOrAdd(channel, _ => new LinkedList<string>());
+            var logger = lf.CreateLogger("RadioStream");
 
-            var filtered = candidates
-                .Where(s => !lastPlayed.Contains(s.AudioUrl))
-                .ToList();
+            ctx.Response.Headers["X-Nawax-StreamMode"] = "proxy";
 
-            if (filtered.Count == 0)
+            if (!TryPickSong(channelKey, songs, channels, out var s, out var resolvedChannel, out var err))
             {
-                filtered = candidates.ToList();
-            }
+                var errCode = (err as dynamic)?.error as string;
 
-            if (filtered.Count == 0)
-                return null;
-
-            var index = Random.Shared.Next(filtered.Count);
-            return filtered[index];
-        }
-
-        private static bool ShouldPlayJingle(string channel)
-        {
-            var current = PlayCountByChannel.AddOrUpdate(
-                channel,
-                addValueFactory: _ => 1,
-                updateValueFactory: (_, prev) => prev + 1);
-
-            return current % PlaysPerJingle == 0;
-        }
-
-        private static void RegisterPlay(string channel, Song song)
-        {
-            var lastPlayed = LastPlayedByChannel.GetOrAdd(channel, _ => new LinkedList<string>());
-
-            if (!string.IsNullOrWhiteSpace(song.AudioUrl))
-            {
-                lastPlayed.AddFirst(song.AudioUrl);
-
-                while (lastPlayed.Count > HistorySize)
+                if (string.Equals(errCode, "invalid_channelKey", StringComparison.OrdinalIgnoreCase))
                 {
-                    lastPlayed.RemoveLast();
+                    ctx.Response.StatusCode = 400;
+                    await ctx.Response.WriteAsJsonAsync(err, ct);
+                    return;
+                }
+
+                if (string.Equals(errCode, "channel_not_found", StringComparison.OrdinalIgnoreCase))
+                {
+                    ctx.Response.StatusCode = 404;
+                    await ctx.Response.WriteAsJsonAsync(err, ct);
+                    return;
+                }
+
+                ctx.Response.StatusCode = 503;
+                await ctx.Response.WriteAsJsonAsync(err, ct);
+                return;
+            }
+
+            var url = CleanUrl(s!.AudioUrl);
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                ctx.Response.StatusCode = 502;
+                await ctx.Response.WriteAsJsonAsync(new { error = "empty_audioUrl", songId = s.Id }, ct);
+                return;
+            }
+
+            // common headers
+            ctx.Response.Headers["Accept-Ranges"] = "bytes";
+            ctx.Response.Headers["X-Nawax-SongId"] = s.Id ?? "";
+            ctx.Response.Headers["X-Nawax-Channel"] = resolvedChannel;
+
+            // ✅ HEAD: no body
+            if (HttpMethods.IsHead(ctx.Request.Method))
+            {
+                try
+                {
+                    var client = httpClientFactory.CreateClient();
+
+                    // safest: minimal ranged GET (0-0) to get headers even if HEAD unsupported upstream
+                    using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                    req.Headers.TryAddWithoutValidation("Range", "bytes=0-0");
+
+                    using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+
+                    if (resp.StatusCode != HttpStatusCode.OK &&
+                        resp.StatusCode != HttpStatusCode.PartialContent)
+                    {
+                        ctx.Response.StatusCode = 502;
+                        await ctx.Response.WriteAsJsonAsync(new
+                        {
+                            error = "upstream_failed",
+                            upstreamStatus = (int)resp.StatusCode,
+                            songId = s.Id
+                        }, ct);
+                        return;
+                    }
+
+                    ctx.Response.StatusCode = 200;
+
+                    var contentType = resp.Content.Headers.ContentType?.ToString();
+                    ctx.Response.ContentType = string.IsNullOrWhiteSpace(contentType) ? "audio/mpeg" : contentType;
+
+                    if (resp.Content.Headers.ContentLength.HasValue)
+                        ctx.Response.ContentLength = resp.Content.Headers.ContentLength.Value;
+
+                    if (resp.Content.Headers.ContentRange != null)
+                        ctx.Response.Headers["Content-Range"] = resp.Content.Headers.ContentRange.ToString();
+
+                    // end (NO body)
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "HEAD stream failed channel={Channel} songId={SongId}", resolvedChannel, s.Id);
+                    if (!ctx.Response.HasStarted)
+                    {
+                        ctx.Response.StatusCode = 500;
+                        await ctx.Response.WriteAsJsonAsync(new { error = "stream_head_failed", message = ex.Message }, ct);
+                    }
+                    return;
+                }
+            }
+
+            // ✅ GET: proxy bytes + Range support
+            var range = ctx.Request.Headers["Range"].ToString();
+
+            try
+            {
+                var client = httpClientFactory.CreateClient();
+
+                using var req = new HttpRequestMessage(HttpMethod.Get, url);
+
+                if (!string.IsNullOrWhiteSpace(range))
+                    req.Headers.TryAddWithoutValidation("Range", range);
+
+                using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+
+                if (resp.StatusCode != HttpStatusCode.OK &&
+                    resp.StatusCode != HttpStatusCode.PartialContent)
+                {
+                    logger.LogWarning("Upstream bad status {Status} songId={SongId}",
+                        (int)resp.StatusCode, s.Id);
+
+                    ctx.Response.StatusCode = 502;
+                    await ctx.Response.WriteAsJsonAsync(new
+                    {
+                        error = "upstream_failed",
+                        upstreamStatus = (int)resp.StatusCode,
+                        songId = s.Id
+                    }, ct);
+                    return;
+                }
+
+                ctx.Response.StatusCode = (int)resp.StatusCode;
+
+                var contentType = resp.Content.Headers.ContentType?.ToString();
+                ctx.Response.ContentType = string.IsNullOrWhiteSpace(contentType) ? "audio/mpeg" : contentType;
+
+                if (resp.Content.Headers.ContentLength.HasValue)
+                    ctx.Response.ContentLength = resp.Content.Headers.ContentLength.Value;
+
+                if (resp.Content.Headers.ContentRange != null)
+                    ctx.Response.Headers["Content-Range"] = resp.Content.Headers.ContentRange.ToString();
+
+                await using var upstream = await resp.Content.ReadAsStreamAsync(ct);
+                await upstream.CopyToAsync(ctx.Response.Body, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Stream failed channel={Channel} songId={SongId}", resolvedChannel, s.Id);
+
+                if (!ctx.Response.HasStarted)
+                {
+                    ctx.Response.StatusCode = 500;
+                    await ctx.Response.WriteAsJsonAsync(new { error = "stream_failed", message = ex.Message }, ct);
                 }
             }
         }
