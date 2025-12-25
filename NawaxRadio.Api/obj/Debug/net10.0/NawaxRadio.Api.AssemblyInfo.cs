@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NawaxRadio.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f3355e41a91523961d0d4930d28d66fe96ee917d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9f04f8a71695f44952d8fc9b0aa1117b766e0769")]
 [assembly: System.Reflection.AssemblyProductAttribute("NawaxRadio.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NawaxRadio.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
