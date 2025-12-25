@@ -1,0 +1,67 @@
+# ===== OS / IDE =====
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.vs/
+*.iml
+
+# ===== .NET =====
+bin/
+obj/
+**/bin/
+**/obj/
+*.user
+*.suo
+*.cache
+*.log
+
+# appsettings (secrets)
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+**/appsettings.json
+**/appsettings.Development.json
+**/appsettings.Production.json
+
+# ===== Firebase / Secrets =====
+*firebase-adminsdk*.json
+*.bak
+*.pfx
+*.pem
+
+# ===== Local / Temp =====
+test.mp3
+channels.json
+channels_out.json
+liara.json
+uploads/
+
+# ===== Flutter =====
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+
+**/.dart_tool/
+**/.packages
+**/.pub/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.metadata
+
+# Android
+**/android/.gradle/
+**/android/local.properties
+**/android/app/debug.keystore
+**/*.keystore
+
+# iOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
