@@ -1,15 +1,18 @@
+//home_page.dart
 import 'dart:async';
 import 'dart:convert';
-
+import 'package:nawax_radio/services/audio_player_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
-
 import 'package:nawax_radio/config/app_config.dart';
 import 'package:nawax_radio/pages/channels_page.dart';
 import 'package:nawax_radio/pages/settings_page.dart';
 import 'package:nawax_radio/widgets/organic_pulse_visualizer.dart';
+
+late final AudioPlayer _player;
+late final AudioPlayerService _audioSvc;
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -36,20 +39,23 @@ class _HomePageState extends State<HomePage> {
 
   late final StreamSubscription<PlayerState> _playerStateSub;
 
+  // ---------------- AutoNext lock & generation ----------------
+  int _playGeneration = 0; // هر بار تعویض کانال/تعویض ترک ++
+  bool _autoNextInFlight = false; // قفل AutoNext
+  String? _lastPreparedUrl; // جلوگیری از setUrl تکراری
+
   @override
   void initState() {
     super.initState();
 
     _playerStateSub = _player.playerStateStream.listen((state) async {
       if (state.processingState == ProcessingState.completed) {
-        if (_userUnlockedAudio) {
-          await _playNextFromRadio(autoplay: true);
-        }
+        await _handleAutoNext();
       }
     });
 
     // روی وب autoplay ممنوعه: فقط آماده می‌کنیم (بدون play)
-    _playNextFromRadio(autoplay: false);
+    _playNextFromRadio(autoplay: false, forceReload: true);
   }
 
   Uri _radioNowEndpoint() =>
@@ -57,6 +63,12 @@ class _HomePageState extends State<HomePage> {
 
   String _radioStreamUrl() =>
       '${AppConfig.apiBaseUrl}/radio/$_currentChannelKey/stream';
+
+  // URL یکتا برای مجبور کردن player به reload (مخصوصاً وب)
+  String _radioStreamUrlUnique() {
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    return '${AppConfig.apiBaseUrl}/radio/$_currentChannelKey/stream?t=$ts';
+  }
 
   // ---------------- JSON helpers ----------------
   String _s(dynamic v) => (v is String) ? v.trim() : '';
@@ -117,8 +129,49 @@ class _HomePageState extends State<HomePage> {
     return s;
   }
 
+  // ---------------- AUTO NEXT (LOCKED) ----------------
+  Future<void> _handleAutoNext() async {
+    if (!_userUnlockedAudio) return;
+
+    // قفل همزمانی: فقط یک بار
+    if (_autoNextInFlight) return;
+    _autoNextInFlight = true;
+
+    final genAtStart = _playGeneration;
+
+    try {
+      debugPrint('✅ AUTO NEXT TRIGGERED');
+
+      // اگر وسطش کانال/پخش عوض شد، این next بی‌اثر
+      if (genAtStart != _playGeneration) return;
+
+      // ✅ 1) tell backend to advance
+      final res = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/radio/$_currentChannelKey/next'),
+      );
+
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('❌ NEXT failed (${res.statusCode}): ${res.body}');
+        return; // نرو setUrl جدید، چون بک‌اند next نداده
+      }
+
+      // ✅ 2) reload for player
+      await _playNextFromRadio(autoplay: true, forceReload: true);
+    } catch (e) {
+      debugPrint('❌ AutoNext error: $e');
+    } finally {
+      if (genAtStart == _playGeneration) {
+        _autoNextInFlight = false;
+      }
+    }
+  }
+
   // ---------------- RADIO FLOW ----------------
-  Future<void> _playNextFromRadio({required bool autoplay}) async {
+  Future<void> _playNextFromRadio({
+    required bool autoplay,
+    bool forceReload = false,
+  }) async {
+    // جلوگیری از همزمانی (fetch)
     if (_isFetchingNext) return;
     _isFetchingNext = true;
 
@@ -148,8 +201,37 @@ class _HomePageState extends State<HomePage> {
       // 1) metadata
       _applyMetadata(data);
 
-      // 2) ✅ همیشه از استریم بک‌اند پخش کن (Web + Mobile)
-      final urlForPlayer = Uri.encodeFull(_radioStreamUrl());
+      // 2) انتخاب URL برای پخش
+      final np = _nowPlayingRoot(data);
+      final audioUrlRaw = _s(np['audioUrl']);
+
+      String rawUrl;
+
+      // ✅ WEB: فقط stream (برای دور زدن CORS گوگل استوریج)
+      if (kIsWeb) {
+        rawUrl = forceReload ? _radioStreamUrlUnique() : _radioStreamUrl();
+      } else {
+        // ✅ MOBILE: audioUrl مستقیم (اگر موجود نبود fallback به stream)
+        if (audioUrlRaw.isNotEmpty) {
+          rawUrl = audioUrlRaw;
+        } else {
+          rawUrl = forceReload ? _radioStreamUrlUnique() : _radioStreamUrl();
+        }
+      }
+
+      final urlForPlayer = Uri.encodeFull(rawUrl);
+      debugPrint('🎧 setUrl => $urlForPlayer');
+
+      // اگر URL همان قبلی است و forceReload هم نیست، دوباره setUrl نزن
+      if (!forceReload && _lastPreparedUrl == urlForPlayer) {
+        if (autoplay && _userUnlockedAudio) {
+          await _safePlay();
+        }
+        if (mounted) setState(() {});
+        return;
+      }
+
+      _lastPreparedUrl = urlForPlayer;
 
       _hasPreparedTrack = false;
       await _player.setUrl(urlForPlayer);
@@ -206,7 +288,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (!_hasPreparedTrack) {
-      await _playNextFromRadio(autoplay: false);
+      await _playNextFromRadio(autoplay: false, forceReload: true);
     }
 
     _userUnlockedAudio = true;
@@ -265,7 +347,6 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           children: [
             const SizedBox(height: 16),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -306,9 +387,7 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-
             const SizedBox(height: 24),
-
             Text(
               _channelTitle,
               style: const TextStyle(
@@ -318,9 +397,7 @@ class _HomePageState extends State<HomePage> {
                 color: Colors.black,
               ),
             ),
-
             const SizedBox(height: 8),
-
             Text(
               _songTitle,
               textAlign: TextAlign.center,
@@ -334,9 +411,7 @@ class _HomePageState extends State<HomePage> {
               _songSinger,
               style: const TextStyle(fontSize: 12, color: Colors.black),
             ),
-
             const SizedBox(height: 8),
-
             if (_isJingle)
               const Text(
                 'JINGLE',
@@ -347,7 +422,6 @@ class _HomePageState extends State<HomePage> {
                   color: Colors.black,
                 ),
               ),
-
             if (_isLoadingTrack)
               const Padding(
                 padding: EdgeInsets.only(top: 8),
@@ -357,7 +431,6 @@ class _HomePageState extends State<HomePage> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
-
             if (_errorText.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -371,7 +444,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-
             Expanded(
               child: Center(
                 child: StreamBuilder<PlayerState>(
@@ -391,14 +463,11 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildProgressBar(),
             ),
-
             const SizedBox(height: 16),
-
             Container(
               height: 80,
               margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -455,9 +524,7 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-
             const SizedBox(height: 24),
-
             GestureDetector(
               onTap: () async {
                 final selected = await Navigator.push<String>(
@@ -471,17 +538,24 @@ class _HomePageState extends State<HomePage> {
                 if (selected != null && selected != _currentChannelKey) {
                   _currentChannelKey = selected;
 
+                  // invalidate old next calls & reset locks
+                  _playGeneration++;
+                  _autoNextInFlight = false;
+                  _lastPreparedUrl = null;
+
                   await _player.stop();
                   _hasPreparedTrack = false;
 
-                  await _playNextFromRadio(autoplay: _userUnlockedAudio);
+                  await _playNextFromRadio(
+                    autoplay: _userUnlockedAudio,
+                    forceReload: true,
+                  );
 
                   if (mounted) setState(() {});
                 }
               },
               child: const Icon(Icons.grid_view, size: 40, color: Colors.black),
             ),
-
             const SizedBox(height: 16),
           ],
         ),

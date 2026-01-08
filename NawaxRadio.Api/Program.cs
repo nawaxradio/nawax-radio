@@ -170,11 +170,13 @@ app.MapGet("/radio/{channel}/now", (string channel, SongStore store, NowPlayingC
         return Results.NotFound(new { error = "Unknown channel" });
 
     var now = cache.GetOrPick(key, store);
+
     if (now is null)
         return Results.NotFound(new { error = "No active songs" });
 
     return Results.Json(new { channel = key, nowPlaying = now });
 });
+
 
 // -------------------- Radio: stream (GET/HEAD + Range proxy) --------------------
 app.MapMethods("/radio/{channel}/stream", new[] { "GET", "HEAD" },
@@ -453,7 +455,7 @@ app.MapPost("/admin/upload/song", async (
 
     var id = Guid.NewGuid().ToString("N");
 
-    var tempPath = Path.GetTempFileName();
+    var tempPath = Path.Combine(Path.GetTempPath(), $"{id}.mp3");
     await using (var fs = System.IO.File.Create(tempPath))
         await file.CopyToAsync(fs, ctx.RequestAborted);
 
@@ -593,18 +595,40 @@ app.MapGet("/debug/endpoints", (IEnumerable<EndpointDataSource> sources) =>
                 if (bool.TryParse(v.ToString(), out var p)) return p;
                 return def;
             }
+var audioUrl = GetStr("audioUrl");
+
+var channelFromDb = NormalizeChannel(GetStr("channel"));
+if (string.IsNullOrWhiteSpace(channelFromDb))
+    channelFromDb = NormalizeChannel(GetStr("channelKey"));
+
+if (string.IsNullOrWhiteSpace(channelFromDb) && !string.IsNullOrWhiteSpace(audioUrl))
+{
+    var marker = "/songs/";
+    var i = audioUrl.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+    if (i >= 0)
+    {
+        var rest = audioUrl.Substring(i + marker.Length);
+        var slash = rest.IndexOf('/');
+        if (slash > 0)
+            channelFromDb = NormalizeChannel(rest.Substring(0, slash));
+    }
+}
+
+if (string.IsNullOrWhiteSpace(channelFromDb))
+    channelFromDb = "main";
 
             var song = new SongDto(
-                id: GetStr("id"),
-                name: GetStr("name"),
-                singer: GetStr("singer"),
-                year: GetInt("year", DateTime.UtcNow.Year),
-                type: GetStr("type"),
-                lengthSec: GetInt("lengthSec", 0),
-                audioUrl: GetStr("audioUrl"),
-                isActive: GetBool("isActive", true),
-                channel: NormalizeChannel(GetStr("channel"))
-            );
+    id: GetStr("id"),
+    name: GetStr("name"),
+    singer: GetStr("singer"),
+    year: GetInt("year", DateTime.UtcNow.Year),
+    type: GetStr("type"),
+    lengthSec: GetInt("lengthSec", 0),
+    audioUrl: audioUrl,
+    isActive: GetBool("isActive", true),
+    channel: channelFromDb
+);
+
 
             if (!string.IsNullOrWhiteSpace(song.id))
             {
@@ -639,8 +663,34 @@ app.MapGet("/debug/endpoints", (IEnumerable<EndpointDataSource> sources) =>
         ));
     }
 }
+// -------------------- Radio: next (FORCE) --------------------
+app.MapPost("/radio/{channel}/next", (string channel, SongStore store, NowPlayingCache cache) =>
+{
+    var key = NormalizeChannel(channel);
+
+    if (!channels.Any(c => c.key == key))
+        return Results.NotFound(new { error = "Unknown channel" });
+
+    // ✅ IMPORTANT:
+    // main = MIX of all active songs (across all channels)
+    // other channels = only that channel
+    var pickKey = key == "main" ? "" : key; // "" => GetAllActive(null) => all channels
+
+    var next = cache.ForceNext(pickKey, store);
+
+    if (next is null)
+        return Results.NotFound(new { error = "No active songs" });
+
+    // ✅ response channel should remain what user asked (main/rap/blue/...)
+    return Results.Json(new
+    {
+        channel = key,
+        nowPlaying = next
+    });
+});
 
 app.Run();
+
 
 // ========================= Helpers / DTOs / Stores =========================
 
@@ -738,17 +788,21 @@ sealed class SongStore
     public void Upsert(SongDto song)
         => _songs[song.id] = song;
 
-    public SongDto? PickForChannel(string channel)
+    public SongDto? PickForChannel(string channel, string? excludeSongId = null)
     {
-        // only pick songs that have usable audioUrl
         var list = _songs.Values
             .Where(s => s.isActive && s.channel == channel && !string.IsNullOrWhiteSpace(s.audioUrl))
             .ToList();
 
         if (list.Count == 0)
-            list = _songs.Values.Where(s => s.isActive && !string.IsNullOrWhiteSpace(s.audioUrl)).ToList();
+            list = _songs.Values
+                .Where(s => s.isActive && !string.IsNullOrWhiteSpace(s.audioUrl))
+                .ToList();
 
         if (list.Count == 0) return null;
+
+        if (!string.IsNullOrWhiteSpace(excludeSongId) && list.Count > 1)
+            list = list.Where(s => s.id != excludeSongId).ToList();
 
         return list[Random.Shared.Next(list.Count)];
     }
@@ -762,26 +816,94 @@ sealed class NowPlayingCache
         public DateTimeOffset ExpiresAt { get; init; }
     }
 
-    private readonly ConcurrentDictionary<string, Entry> _cache = new();
+    private readonly ConcurrentDictionary<string, Entry> _current = new();
+    private readonly ConcurrentDictionary<string, Queue<string>> _queue = new();
+    private readonly ConcurrentDictionary<string, string?> _lastId = new();
+    private readonly ConcurrentDictionary<string, object> _locks = new();
 
     public SongDto? GetOrPick(string channel, SongStore store)
     {
         var now = DateTimeOffset.UtcNow;
 
-        if (_cache.TryGetValue(channel, out var e) && e.ExpiresAt > now)
-            return e.Song;
+        // ✅ 1) اگر هنوز expire نشده، همون آهنگ قبلی
+        if (_current.TryGetValue(channel, out var existing) && existing.ExpiresAt > now)
+            return existing.Song;
 
-        var picked = store.PickForChannel(channel);
-        if (picked is null) return null;
+        var gate = _locks.GetOrAdd(channel, _ => new object());
 
-        var ttlSec = picked.lengthSec > 10 ? picked.lengthSec : 120;
-
-        _cache[channel] = new Entry
+        lock (gate)
         {
-            Song = picked,
-            ExpiresAt = now.AddSeconds(ttlSec)
-        };
+            // ✅ دوباره چک داخل lock (برای HEAD/GET همزمان)
+            if (_current.TryGetValue(channel, out existing) && existing.ExpiresAt > now)
+                return existing.Song;
 
-        return picked;
+            var pool = channel == "main"
+    ? store.GetAllActive(null)      // ✅ main = mix of all channels
+    : store.GetAllActive(channel);
+
+var ids = pool
+    .Where(s => s.isActive && !string.IsNullOrWhiteSpace(s.audioUrl))
+    .Select(s => s.id)
+    .Distinct()
+    .ToList();
+
+
+
+            if (ids.Count == 0) return null;
+
+            // ✅ اگر صف نداریم یا خالیه، shuffle جدید بساز
+            if (!_queue.TryGetValue(channel, out var q) || q.Count == 0)
+            {
+                for (int i = ids.Count - 1; i > 0; i--)
+                {
+                    int j = Random.Shared.Next(i + 1);
+                    (ids[i], ids[j]) = (ids[j], ids[i]);
+                }
+
+                // جلوگیری از اینکه اولِ shuffle = آخرین آهنگ قبلی
+                if (ids.Count > 1 && _lastId.TryGetValue(channel, out var last) && !string.IsNullOrWhiteSpace(last))
+                {
+                    if (ids[0] == last)
+                        (ids[0], ids[1]) = (ids[1], ids[0]);
+                }
+
+                q = new Queue<string>(ids);
+                _queue[channel] = q;
+            }
+
+            var nextId = q.Dequeue();
+            var picked = store.GetById(nextId);
+
+            // اگر به هر دلیل نبود، یکی دیگه بردار
+            if (picked is null && q.Count > 0)
+            {
+                nextId = q.Dequeue();
+                picked = store.GetById(nextId);
+            }
+            if (picked is null) return null;
+
+            _lastId[channel] = picked.id;
+
+            // چون lengthSec اکثر آهنگ‌هات 0 هست، TTL پیش‌فرض 120 ثانیه
+            var ttlSec = picked.lengthSec > 10 ? picked.lengthSec : 120;
+
+            _current[channel] = new Entry
+            {
+                Song = picked,
+                ExpiresAt = now.AddSeconds(ttlSec)
+            };
+
+            return picked;
+        }
     }
+    public SongDto? ForceNext(string channel, SongStore store)
+{
+    var gate = _locks.GetOrAdd(channel, _ => new object());
+    lock (gate)
+    {
+        _current.TryRemove(channel, out _); // expire current immediately
+        return GetOrPick(channel, store);
+    }
+}
+
 }
