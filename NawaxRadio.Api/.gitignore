@@ -1,3 +1,8 @@
+# =====================================================
+# Nawax Radio - .gitignore (Clean & Safe)
+# .NET + Flutter + Firebase
+# =====================================================
+
 # ===== OS / IDE =====
 .DS_Store
 Thumbs.db
@@ -5,18 +10,20 @@ Thumbs.db
 .idea/
 .vs/
 *.iml
+*.user
+*.suo
 
-# ===== .NET =====
+# ===== Logs / Caches =====
+*.log
+*.cache
+
+# ===== .NET build outputs =====
 bin/
 obj/
 **/bin/
 **/obj/
-*.user
-*.suo
-*.cache
-*.log
 
-# appsettings (secrets)
+# ===== appsettings (secrets) =====
 appsettings.json
 appsettings.Development.json
 appsettings.Production.json
@@ -24,43 +31,50 @@ appsettings.Production.json
 **/appsettings.Development.json
 **/appsettings.Production.json
 
-# ===== Firebase / Secrets =====
+# ===== Secrets / Keys / Certs =====
 *firebase-adminsdk*.json
-*.bak
 *.pfx
 *.pem
+*.key
+*.crt
+*.bak
+
+# ===== Firebase (allow public configs) =====
+*.json
+!firebase.json
+!.firebaserc
 
 # ===== Local / Temp =====
+uploads/
 test.mp3
 channels.json
 channels_out.json
 liara.json
-uploads/
 
-# ===== Flutter =====
+# ===== Flutter / Dart =====
 .dart_tool/
 .packages
 .pub/
 build/
+.metadata
 .flutter-plugins
 .flutter-plugins-dependencies
-.metadata
-
 **/.dart_tool/
 **/.packages
 **/.pub/
 **/build/
+**/.metadata
 **/.flutter-plugins
 **/.flutter-plugins-dependencies
-**/.metadata
 
-# Android
+# ===== Android =====
 **/android/.gradle/
 **/android/local.properties
 **/android/app/debug.keystore
 **/*.keystore
+**/*.jks
 
-# iOS
+# ===== iOS =====
 **/ios/Pods/
 **/ios/.symlinks/
 **/ios/Flutter/Generated.xcconfig
