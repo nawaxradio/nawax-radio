@@ -308,7 +308,7 @@ class SettingsPage extends StatelessWidget {
 • معرفی هنرمندان و آثار
 
 درخواست همکاری:
-ads@nawax.app
+ads@nawaxradio.com
 ''', style: TextStyle(color: Colors.white70, height: 1.6)),
       ),
     );
@@ -338,7 +338,7 @@ ads@nawax.app
 • هنرمندان مستقل  
 
 ارسال آثار:
-artists@nawax.app
+artists@nawaxradio.com
 ''', style: TextStyle(color: Colors.white70, height: 1.6)),
       ),
     );

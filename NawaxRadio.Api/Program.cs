@@ -674,9 +674,8 @@ app.MapPost("/radio/{channel}/next", (string channel, SongStore store, NowPlayin
     // ✅ IMPORTANT:
     // main = MIX of all active songs (across all channels)
     // other channels = only that channel
-    var pickKey = key == "main" ? "" : key; // "" => GetAllActive(null) => all channels
+    var next = cache.ForceNext(key, store);
 
-    var next = cache.ForceNext(pickKey, store);
 
     if (next is null)
         return Results.NotFound(new { error = "No active songs" });

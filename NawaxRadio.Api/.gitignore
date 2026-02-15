@@ -20,16 +20,14 @@ Thumbs.db
 # ===== .NET build outputs =====
 bin/
 obj/
+out/
 **/bin/
 **/obj/
+**/out/
 
-# ===== appsettings (secrets) =====
-appsettings.json
+# ===== appsettings (secrets only) =====
 appsettings.Development.json
 appsettings.Production.json
-**/appsettings.json
-**/appsettings.Development.json
-**/appsettings.Production.json
 
 # ===== Secrets / Keys / Certs =====
 *firebase-adminsdk*.json
@@ -38,16 +36,16 @@ appsettings.Production.json
 *.key
 *.crt
 *.bak
+.env
+.env.*
 
 # ===== Firebase (allow public configs) =====
-*.json
 !firebase.json
 !.firebaserc
 
 # ===== Local / Temp =====
 uploads/
 test.mp3
-channels.json
 channels_out.json
 liara.json
 

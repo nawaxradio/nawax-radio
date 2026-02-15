@@ -1,7 +1,6 @@
 //home_page.dart
 import 'dart:async';
 import 'dart:convert';
-import 'package:nawax_radio/services/audio_player_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -10,9 +9,6 @@ import 'package:nawax_radio/config/app_config.dart';
 import 'package:nawax_radio/pages/channels_page.dart';
 import 'package:nawax_radio/pages/settings_page.dart';
 import 'package:nawax_radio/widgets/organic_pulse_visualizer.dart';
-
-late final AudioPlayer _player;
-late final AudioPlayerService _audioSvc;
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -306,6 +302,31 @@ class _HomePageState extends State<HomePage> {
 
   String get _channelTitle => _currentChannelKey.toUpperCase();
 
+  Future<void> _openChannels() async {
+    final selected = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChannelsPage(currentChannelKey: _currentChannelKey),
+      ),
+    );
+
+    if (selected != null && selected != _currentChannelKey) {
+      _currentChannelKey = selected;
+
+      // invalidate old next calls & reset locks
+      _playGeneration++;
+      _autoNextInFlight = false;
+      _lastPreparedUrl = null;
+
+      await _player.stop();
+      _hasPreparedTrack = false;
+
+      await _playNextFromRadio(autoplay: _userUnlockedAudio, forceReload: true);
+
+      if (mounted) setState(() {});
+    }
+  }
+
   Widget _buildProgressBar() {
     return StreamBuilder<Duration>(
       stream: _player.positionStream,
@@ -313,20 +334,55 @@ class _HomePageState extends State<HomePage> {
         final position = snapshot.data ?? Duration.zero;
         final total = _player.duration ?? Duration.zero;
 
-        double progress = 0;
-        if (total.inMilliseconds > 0) {
-          progress = position.inMilliseconds / total.inMilliseconds;
-        }
+        final hasTotal = total.inMilliseconds > 0;
+        final progress = hasTotal
+            ? (position.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0)
+            : 0.0;
 
-        return SizedBox(
-          height: 4,
-          child: LinearProgressIndicator(
-            value: progress.clamp(0, 1),
-            backgroundColor: Colors.white,
-            valueColor: const AlwaysStoppedAnimation(Colors.black),
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: SizedBox(
+            height: 6,
+            child: LinearProgressIndicator(
+              value: hasTotal
+                  ? progress
+                  : null, // اگر duration نداریم indeterminate
+              backgroundColor: Colors.white.withOpacity(0.25),
+              valueColor: const AlwaysStoppedAnimation(Colors.black),
+            ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildStatusRow() {
+    return SizedBox(
+      height: 32,
+      child: Center(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          child: _isLoadingTrack
+              ? const SizedBox(
+                  key: ValueKey('loading'),
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : (_errorText.isNotEmpty
+                    ? Text(
+                        _errorText,
+                        key: const ValueKey('error'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )
+                    : const SizedBox(key: ValueKey('empty'))),
+        ),
+      ),
     );
   }
 
@@ -347,10 +403,19 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           children: [
             const SizedBox(height: 16),
+
+            // ---------------- Header (Channels left / Settings right) ----------------
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.grid_view_rounded,
+                      color: Colors.black,
+                    ),
+                    onPressed: _openChannels,
+                  ),
                   const Spacer(),
                   Column(
                     children: const [
@@ -376,7 +441,10 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.settings, color: Colors.black),
+                    icon: const Icon(
+                      Icons.settings_rounded,
+                      color: Colors.black,
+                    ),
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -387,7 +455,9 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
+
             const SizedBox(height: 24),
+
             Text(
               _channelTitle,
               style: const TextStyle(
@@ -397,21 +467,30 @@ class _HomePageState extends State<HomePage> {
                 color: Colors.black,
               ),
             ),
+
             const SizedBox(height: 8),
+
             Text(
-              _songTitle,
+              (_songTitle.isNotEmpty) ? _songTitle : 'Loading…',
               textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Colors.black,
               ),
             ),
+
             Text(
-              _songSinger,
+              (_songSinger.isNotEmpty) ? _songSinger : '—',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 12, color: Colors.black),
             ),
+
             const SizedBox(height: 8),
+
             if (_isJingle)
               const Text(
                 'JINGLE',
@@ -422,28 +501,11 @@ class _HomePageState extends State<HomePage> {
                   color: Colors.black,
                 ),
               ),
-            if (_isLoadingTrack)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: SizedBox(
-                  height: 18,
-                  width: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            if (_errorText.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  _errorText,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+
+            // ---------------- Stable status row (no layout shift) ----------------
+            _buildStatusRow(),
+
+            // ---------------- Visualizer (UNCHANGED) ----------------
             Expanded(
               child: Center(
                 child: StreamBuilder<PlayerState>(
@@ -463,11 +525,15 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildProgressBar(),
             ),
+
             const SizedBox(height: 16),
+
+            // ---------------- Controls ----------------
             Container(
               height: 80,
               margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -475,17 +541,19 @@ class _HomePageState extends State<HomePage> {
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(40),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 32),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  GestureDetector(
-                    onTap: () => _seekRelative(-10),
-                    child: const Text(
-                      '-10S',
-                      style: TextStyle(color: Colors.white),
+                  IconButton(
+                    onPressed: () => _seekRelative(-10),
+                    icon: const Icon(
+                      Icons.replay_10_rounded,
+                      color: Colors.white,
                     ),
+                    iconSize: 28,
                   ),
+
                   StreamBuilder<PlayerState>(
                     stream: _player.playerStateStream,
                     builder: (context, snapshot) {
@@ -514,48 +582,19 @@ class _HomePageState extends State<HomePage> {
                       );
                     },
                   ),
-                  GestureDetector(
-                    onTap: () => _seekRelative(10),
-                    child: const Text(
-                      '+10S',
-                      style: TextStyle(color: Colors.white),
+
+                  IconButton(
+                    onPressed: () => _seekRelative(10),
+                    icon: const Icon(
+                      Icons.forward_10_rounded,
+                      color: Colors.white,
                     ),
+                    iconSize: 28,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            GestureDetector(
-              onTap: () async {
-                final selected = await Navigator.push<String>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        ChannelsPage(currentChannelKey: _currentChannelKey),
-                  ),
-                );
 
-                if (selected != null && selected != _currentChannelKey) {
-                  _currentChannelKey = selected;
-
-                  // invalidate old next calls & reset locks
-                  _playGeneration++;
-                  _autoNextInFlight = false;
-                  _lastPreparedUrl = null;
-
-                  await _player.stop();
-                  _hasPreparedTrack = false;
-
-                  await _playNextFromRadio(
-                    autoplay: _userUnlockedAudio,
-                    forceReload: true,
-                  );
-
-                  if (mounted) setState(() {});
-                }
-              },
-              child: const Icon(Icons.grid_view, size: 40, color: Colors.black),
-            ),
             const SizedBox(height: 16),
           ],
         ),
