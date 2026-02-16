@@ -89,3 +89,9 @@ build/
 # local assets not for repo
 logo.png
 
+
+# dotnet build artifacts
+**/bin/
+**/obj/
+out/
+
