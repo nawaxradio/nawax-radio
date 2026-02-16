@@ -79,3 +79,13 @@ build/
 **/ios/.symlinks/
 **/ios/Flutter/Generated.xcconfig
 **/ios/Flutter/flutter_export_environment.sh
+
+# secrets
+**/*firebase-adminsdk*.json
+**/*.p12
+**/*.pem
+**/*.key
+
+# local assets not for repo
+logo.png
+
