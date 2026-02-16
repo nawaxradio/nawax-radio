@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 class AppConfig {
   static const String apiBaseUrlDev = 'http://127.0.0.1:5246';
-  static const String apiBaseUrlProd = 'https://nawaxradio-api.liara.run';
+  static const String apiBaseUrlProd = 'https://api.nawaxradio.com';
 
   // ✅ default false. Only force prod with --dart-define=FORCE_PROD=true
   static const bool forceProd = bool.fromEnvironment(
@@ -15,3 +15,4 @@ class AppConfig {
     return kReleaseMode ? apiBaseUrlProd : apiBaseUrlDev;
   }
 }
+
