@@ -715,17 +715,15 @@ app.MapPost("/radio/{channel}/next", (string channel, SongStore store, NowPlayin
 
     // âœ… IMPORTANT:
     // main = MIX of all active songs (across all channels)
-    // other channels = only that channel    // ✅ FIX:
-    // Always advance using the real channel key.
-    // main mixing is already handled inside NowPlayingCache when channel == "main".
-    var next = cache.ForceNext(key, store);if (next is null)
+    // other channels = only that channel
+    var pickKey = key == "main" ? "" : key; // "" => GetAllActive(null) => all channels
+
+    var next = cache.ForceNext(pickKey, store);
+
+    if (next is null)
         return Results.NotFound(new { error = "No active songs" });
 
-    
-
-    //  Guard: never leak across channels (except main mix)
-    if (key != "main" && NormalizeChannel(next.channel) != key)
-        return Results.NotFound(new { error = "No active songs for this channel" });// âœ… response channel should remain what user asked (main/rap/blue/...)
+    // âœ… response channel should remain what user asked (main/rap/blue/...)
     return Results.Json(new
     {
         channel = key,
@@ -951,6 +949,5 @@ var ids = pool
 }
 
 }
-
 
 

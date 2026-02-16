@@ -150,10 +150,9 @@ class _HomePageState extends State<HomePage> {
         Uri.parse('${AppConfig.apiBaseUrl}/radio/$_currentChannelKey/next'),
       );
 
-      final ok = (res.statusCode >= 200 && res.statusCode < 300);
-      if (!ok) {
-        debugPrint(' NEXT failed (): ');
-        //  Fail-safe: still reload stream (backend may have rotated by TTL anyway)
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('âŒ NEXT failed (${res.statusCode}): ${res.body}');
+        return; // Ù†Ø±Ùˆ setUrl Ø¬Ø¯ÛŒØ¯ØŒ Ú†ÙˆÙ† Ø¨Ú©â€ŒØ§Ù†Ø¯ next Ù†Ø¯Ø§Ø¯Ù‡
       }
 
       // âœ… 2) reload for player
@@ -564,4 +563,3 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
