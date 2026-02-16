@@ -95,3 +95,9 @@ logo.png
 **/obj/
 out/
 
+
+# dotnet artifacts
+**/bin/
+**/obj/
+out/
+
