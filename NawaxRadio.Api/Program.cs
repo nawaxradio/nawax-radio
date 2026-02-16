@@ -1,4 +1,4 @@
-// Program.cs
+﻿// Program.cs
 using System;
 using System.IO;
 using System.Linq;
@@ -29,12 +29,30 @@ using TagLib;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("web", policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:50100",
+                "http://127.0.0.1:50100",
+                "https://nawaxradio.com",
+                "https://www.nawaxradio.com"
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .WithExposedHeaders("Accept-Ranges", "Content-Range", "Content-Length");
+    });
+});
+
+
 // -------------------- Logging --------------------
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
 // =====================================================
-// 🔑 FIREBASE / GOOGLE ADC CREDENTIAL
+// ðŸ”‘ FIREBASE / GOOGLE ADC CREDENTIAL
 // =====================================================
 var credsB64 = Environment.GetEnvironmentVariable("GOOGLE_CREDENTIALS_B64");
 if (!string.IsNullOrWhiteSpace(credsB64))
@@ -60,7 +78,7 @@ var projectId =
 if (string.IsNullOrWhiteSpace(projectId))
     throw new Exception("GOOGLE_PROJECT_ID is not set");
 
-// ✅ Use the actual Firebase Storage bucket name (often *.firebasestorage.app)
+// âœ… Use the actual Firebase Storage bucket name (often *.firebasestorage.app)
 var bucketName =
     Environment.GetEnvironmentVariable("FIREBASE_BUCKET")
     ?? $"{projectId}.firebasestorage.app";
@@ -123,8 +141,14 @@ app.Use(async (ctx, next) =>
 });
 
 // -------------------- Root / Health --------------------
-app.MapGet("/", () => Results.Text("NawaxRadio API is running ✅", "text/plain; charset=utf-8"));
+
+app.UseCors("web");
+app.MapGet("/", () => Results.Text("NawaxRadio API is running âœ…", "text/plain; charset=utf-8"));
+
+app.UseCors("web");
 app.MapGet("/health", () => Results.Json(new { ok = true, utc = DateTime.UtcNow, projectId, bucketName }));
+
+app.UseCors("web");
 app.MapGet("/debug/env", () =>
 {
     var pid = Environment.GetEnvironmentVariable("GOOGLE_PROJECT_ID");
@@ -136,19 +160,23 @@ app.MapGet("/debug/env", () =>
 // -------------------- Channels --------------------
 var channels = new[]
 {
-    new ChannelDto("main", "رادیوی اصلی", "ترکیب هیت‌ها ۲۴/۷", "📻"),
-    new ChannelDto("party", "پارتی", "انرژی بالا • مهمونی • کلاب", "🎉"),
-    new ChannelDto("rap", "رپ", "رپ و هیپ‌هاپ", "🎤"),
-    new ChannelDto("shooti", "شوتی", "ریتم‌های شوتی", "🚗"),
-    new ChannelDto("blue", "بلو", "آروم و احساسی", "💙"),
-    new ChannelDto("motivational", "انگیزشی", "انرژی و انگیزشی", "🔥"),
-    new ChannelDto("latest", "جدیدترین", "جدیدترین‌ها", "🆕"),
+    new ChannelDto("main", "Ø±Ø§Ø¯ÛŒÙˆÛŒ Ø§ØµÙ„ÛŒ", "ØªØ±Ú©ÛŒØ¨ Ù‡ÛŒØªâ€ŒÙ‡Ø§ Û²Û´/Û·", "ðŸ“»"),
+    new ChannelDto("party", "Ù¾Ø§Ø±ØªÛŒ", "Ø§Ù†Ø±Ú˜ÛŒ Ø¨Ø§Ù„Ø§ â€¢ Ù…Ù‡Ù…ÙˆÙ†ÛŒ â€¢ Ú©Ù„Ø§Ø¨", "ðŸŽ‰"),
+    new ChannelDto("rap", "Ø±Ù¾", "Ø±Ù¾ Ùˆ Ù‡ÛŒÙ¾â€ŒÙ‡Ø§Ù¾", "ðŸŽ¤"),
+    new ChannelDto("shooti", "Ø´ÙˆØªÛŒ", "Ø±ÛŒØªÙ…â€ŒÙ‡Ø§ÛŒ Ø´ÙˆØªÛŒ", "ðŸš—"),
+    new ChannelDto("blue", "Ø¨Ù„Ùˆ", "Ø¢Ø±ÙˆÙ… Ùˆ Ø§Ø­Ø³Ø§Ø³ÛŒ", "ðŸ’™"),
+    new ChannelDto("motivational", "Ø§Ù†Ú¯ÛŒØ²Ø´ÛŒ", "Ø§Ù†Ø±Ú˜ÛŒ Ùˆ Ø§Ù†Ú¯ÛŒØ²Ø´ÛŒ", "ðŸ”¥"),
+    new ChannelDto("latest", "Ø¬Ø¯ÛŒØ¯ØªØ±ÛŒÙ†", "Ø¬Ø¯ÛŒØ¯ØªØ±ÛŒÙ†â€ŒÙ‡Ø§", "ðŸ†•"),
 };
 
+
+app.UseCors("web");
 app.MapGet("/channels", () => Results.Json(channels));
 
 // -------------------- Songs --------------------
-// ✅ Supports ?channel=main
+// âœ… Supports ?channel=main
+
+app.UseCors("web");
 app.MapGet("/songs", (HttpRequest req, SongStore store) =>
 {
     var channel = NormalizeChannel(req.Query["channel"].ToString());
@@ -156,6 +184,8 @@ app.MapGet("/songs", (HttpRequest req, SongStore store) =>
     return Results.Json(list);
 });
 
+
+app.UseCors("web");
 app.MapGet("/songs/{id}", (string id, SongStore store) =>
 {
     var s = store.GetById(id);
@@ -163,6 +193,8 @@ app.MapGet("/songs/{id}", (string id, SongStore store) =>
 });
 
 // -------------------- Radio: now --------------------
+
+app.UseCors("web");
 app.MapGet("/radio/{channel}/now", (string channel, SongStore store, NowPlayingCache cache) =>
 {
     var key = NormalizeChannel(channel);
@@ -179,6 +211,8 @@ app.MapGet("/radio/{channel}/now", (string channel, SongStore store, NowPlayingC
 
 
 // -------------------- Radio: stream (GET/HEAD + Range proxy) --------------------
+
+app.UseCors("web");
 app.MapMethods("/radio/{channel}/stream", new[] { "GET", "HEAD" },
     async (HttpContext ctx, string channel, SongStore store, NowPlayingCache cache, IHttpClientFactory httpClientFactory) =>
 {
@@ -198,7 +232,7 @@ app.MapMethods("/radio/{channel}/stream", new[] { "GET", "HEAD" },
         return;
     }
 
-    // ✅ REPLACE THIS PART (as you asked)
+    // âœ… REPLACE THIS PART (as you asked)
     string signedOrDirectUrl;
     try
     {
@@ -208,7 +242,7 @@ app.MapMethods("/radio/{channel}/stream", new[] { "GET", "HEAD" },
         }
         else if (!string.IsNullOrWhiteSpace(now.audioUrl) && now.audioUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
-            // public url هست ولی private ـه => باید تبدیلش کنیم به gs:// و بعد Signed بسازیم
+            // public url Ù‡Ø³Øª ÙˆÙ„ÛŒ private Ù€Ù‡ => Ø¨Ø§ÛŒØ¯ ØªØ¨Ø¯ÛŒÙ„Ø´ Ú©Ù†ÛŒÙ… Ø¨Ù‡ gs:// Ùˆ Ø¨Ø¹Ø¯ Signed Ø¨Ø³Ø§Ø²ÛŒÙ…
             signedOrDirectUrl = CreateSignedUrlFromPublicGcsUrl(now.audioUrl, TimeSpan.FromHours(2));
         }
         else
@@ -231,7 +265,7 @@ app.MapMethods("/radio/{channel}/stream", new[] { "GET", "HEAD" },
         ? HttpMethod.Head
         : HttpMethod.Get;
 
-    // ✅ Use signedOrDirectUrl instead of signedUrl
+    // âœ… Use signedOrDirectUrl instead of signedUrl
     using var req = new HttpRequestMessage(method, signedOrDirectUrl);
 
     // Forward Range header
@@ -276,6 +310,8 @@ app.MapMethods("/radio/{channel}/stream", new[] { "GET", "HEAD" },
 });
 
 // -------------------- Admin Upload UI --------------------
+
+app.UseCors("web");
 app.MapGet("/admin/upload", () =>
 {
     var html = """
@@ -284,7 +320,7 @@ app.MapGet("/admin/upload", () =>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Nawax Radio — Admin Upload</title>
+  <title>Nawax Radio â€” Admin Upload</title>
   <style>
     :root{
       --bg:#0b0b0b; --card:#111; --text:#fff; --muted:#bdbdbd;
@@ -317,7 +353,7 @@ app.MapGet("/admin/upload", () =>
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div>📻 <b>Nawax Radio</b> — Admin Upload</div>
+    <div>ðŸ“» <b>Nawax Radio</b> â€” Admin Upload</div>
     <div class="nav">
       <a href="/" target="_blank">API</a>
       <a href="/channels" target="_blank">Channels</a>
@@ -328,45 +364,45 @@ app.MapGet("/admin/upload", () =>
 
   <div class="grid">
     <div class="card">
-      <div class="hd"><b>آپلود آهنگ</b></div>
+      <div class="hd"><b>Ø¢Ù¾Ù„ÙˆØ¯ Ø¢Ù‡Ù†Ú¯</b></div>
       <div class="body">
         <form id="uploadForm" enctype="multipart/form-data">
           <div class="row">
             <div>
-              <label>فایل MP3</label>
+              <label>ÙØ§ÛŒÙ„ MP3</label>
               <input type="file" name="file" accept=".mp3,audio/mpeg" required>
             </div>
             <div>
-              <label>کانال</label>
+              <label>Ú©Ø§Ù†Ø§Ù„</label>
               <select id="channel" name="channel" required>
-                <option value="">در حال بارگذاری…</option>
+                <option value="">Ø¯Ø± Ø­Ø§Ù„ Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ÛŒâ€¦</option>
               </select>
             </div>
           </div>
 
           <div class="row" style="margin-top:10px">
             <div>
-              <label>نام آهنگ</label>
+              <label>Ù†Ø§Ù… Ø¢Ù‡Ù†Ú¯</label>
               <input name="name">
             </div>
             <div>
-              <label>خواننده</label>
+              <label>Ø®ÙˆØ§Ù†Ù†Ø¯Ù‡</label>
               <input name="singer">
             </div>
           </div>
 
           <div class="actions" style="margin-top:12px">
-            <button class="btn primary" type="submit">⬆️ آپلود</button>
-            <button class="btn" type="button" id="reload">🔄 کانال‌ها</button>
+            <button class="btn primary" type="submit">â¬†ï¸ Ø¢Ù¾Ù„ÙˆØ¯</button>
+            <button class="btn" type="button" id="reload">ðŸ”„ Ú©Ø§Ù†Ø§Ù„â€ŒÙ‡Ø§</button>
           </div>
 
-          <div id="status" class="status">آماده…</div>
+          <div id="status" class="status">Ø¢Ù…Ø§Ø¯Ù‡â€¦</div>
         </form>
       </div>
     </div>
 
     <div class="card">
-      <div class="hd"><b>ابزار سریع</b></div>
+      <div class="hd"><b>Ø§Ø¨Ø²Ø§Ø± Ø³Ø±ÛŒØ¹</b></div>
       <div class="body">
         <a class="btn" href="/radio/main/now" target="_blank">Now Playing</a>
         <a class="btn" href="/radio/main/stream" target="_blank">Stream</a>
@@ -387,13 +423,13 @@ function setStatus(t,c){
 }
 
 async function loadChannels(){
-  setStatus('در حال دریافت کانال‌ها…','warn');
+  setStatus('Ø¯Ø± Ø­Ø§Ù„ Ø¯Ø±ÛŒØ§ÙØª Ú©Ø§Ù†Ø§Ù„â€ŒÙ‡Ø§â€¦','warn');
   try{
     const r = await fetch('/channels', { cache:'no-store' });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const ch = await r.json();
 
-    channelSelect.innerHTML = '<option value="">انتخاب کانال</option>';
+    channelSelect.innerHTML = '<option value="">Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ø§Ù†Ø§Ù„</option>';
     ch.forEach(c=>{
       const o=document.createElement('option');
       o.value=c.key;
@@ -401,16 +437,16 @@ async function loadChannels(){
       channelSelect.appendChild(o);
     });
 
-    setStatus('کانال‌ها آماده‌اند ✅','ok');
+    setStatus('Ú©Ø§Ù†Ø§Ù„â€ŒÙ‡Ø§ Ø¢Ù…Ø§Ø¯Ù‡â€ŒØ§Ù†Ø¯ âœ…','ok');
   }catch(e){
-    setStatus('خطا در دریافت کانال‌ها ❌','bad');
+    setStatus('Ø®Ø·Ø§ Ø¯Ø± Ø¯Ø±ÛŒØ§ÙØª Ú©Ø§Ù†Ø§Ù„â€ŒÙ‡Ø§ âŒ','bad');
   }
 }
 
 form.addEventListener('submit', async e=>{
   e.preventDefault();
   const fd = new FormData(form);
-  setStatus('در حال آپلود…','warn');
+  setStatus('Ø¯Ø± Ø­Ø§Ù„ Ø¢Ù¾Ù„ÙˆØ¯â€¦','warn');
 
   try{
     const r = await fetch('/admin/upload/song', { method:'POST', body: fd });
@@ -419,9 +455,9 @@ form.addEventListener('submit', async e=>{
 
     let data;
     try{ data = JSON.parse(txt); }catch{ data = txt; }
-    setStatus('آپلود موفق ✅\\n'+JSON.stringify(data,null,2),'ok');
+    setStatus('Ø¢Ù¾Ù„ÙˆØ¯ Ù…ÙˆÙÙ‚ âœ…\\n'+JSON.stringify(data,null,2),'ok');
   }catch(err){
-    setStatus('آپلود ناموفق ❌\\n'+err,'bad');
+    setStatus('Ø¢Ù¾Ù„ÙˆØ¯ Ù†Ø§Ù…ÙˆÙÙ‚ âŒ\\n'+err,'bad');
   }
 });
 
@@ -435,6 +471,8 @@ loadChannels();
 });
 
 // -------------------- Admin Upload API --------------------
+
+app.UseCors("web");
 app.MapPost("/admin/upload/song", async (
     HttpContext ctx,
     SongStore store,
@@ -510,7 +548,7 @@ app.MapPost("/admin/upload/song", async (
 
     try { System.IO.File.Delete(tempPath); } catch { }
 
-    // ✅ IMPORTANT: store gs://... (not public url)
+    // âœ… IMPORTANT: store gs://... (not public url)
     var gsUri = $"gs://{bucket}/{objectName}";
 
     var song = new SongDto(
@@ -545,6 +583,8 @@ app.MapPost("/admin/upload/song", async (
 });
 
 // -------------------- Debug endpoints list --------------------
+
+app.UseCors("web");
 app.MapGet("/debug/endpoints", (IEnumerable<EndpointDataSource> sources) =>
 {
     var list = sources
@@ -664,6 +704,8 @@ if (string.IsNullOrWhiteSpace(channelFromDb))
     }
 }
 // -------------------- Radio: next (FORCE) --------------------
+
+app.UseCors("web");
 app.MapPost("/radio/{channel}/next", (string channel, SongStore store, NowPlayingCache cache) =>
 {
     var key = NormalizeChannel(channel);
@@ -671,7 +713,7 @@ app.MapPost("/radio/{channel}/next", (string channel, SongStore store, NowPlayin
     if (!channels.Any(c => c.key == key))
         return Results.NotFound(new { error = "Unknown channel" });
 
-    // ✅ IMPORTANT:
+    // âœ… IMPORTANT:
     // main = MIX of all active songs (across all channels)
     // other channels = only that channel
     var pickKey = key == "main" ? "" : key; // "" => GetAllActive(null) => all channels
@@ -681,7 +723,7 @@ app.MapPost("/radio/{channel}/next", (string channel, SongStore store, NowPlayin
     if (next is null)
         return Results.NotFound(new { error = "No active songs" });
 
-    // ✅ response channel should remain what user asked (main/rap/blue/...)
+    // âœ… response channel should remain what user asked (main/rap/blue/...)
     return Results.Json(new
     {
         channel = key,
@@ -716,7 +758,7 @@ static string CreateSignedUrlFromGsUri(string gsUri, TimeSpan ttl)
     return CreateSignedUrl(bucket, objectName, ttl);
 }
 
-// ✅ NEW helper you asked to add
+// âœ… NEW helper you asked to add
 static string CreateSignedUrlFromPublicGcsUrl(string url, TimeSpan ttl)
 {
     // sample:
@@ -735,7 +777,7 @@ static string CreateSignedUrlFromPublicGcsUrl(string url, TimeSpan ttl)
     return CreateSignedUrl(bucket, objectName, ttl);
 }
 
-// ✅ Signed URL generator (NO red / no expiresAt overload)
+// âœ… Signed URL generator (NO red / no expiresAt overload)
 static string CreateSignedUrl(string bucket, string objectName, TimeSpan ttl)
 {
     // Uses ADC (GOOGLE_APPLICATION_CREDENTIALS)
@@ -825,7 +867,7 @@ sealed class NowPlayingCache
     {
         var now = DateTimeOffset.UtcNow;
 
-        // ✅ 1) اگر هنوز expire نشده، همون آهنگ قبلی
+        // âœ… 1) Ø§Ú¯Ø± Ù‡Ù†ÙˆØ² expire Ù†Ø´Ø¯Ù‡ØŒ Ù‡Ù…ÙˆÙ† Ø¢Ù‡Ù†Ú¯ Ù‚Ø¨Ù„ÛŒ
         if (_current.TryGetValue(channel, out var existing) && existing.ExpiresAt > now)
             return existing.Song;
 
@@ -833,12 +875,12 @@ sealed class NowPlayingCache
 
         lock (gate)
         {
-            // ✅ دوباره چک داخل lock (برای HEAD/GET همزمان)
+            // âœ… Ø¯ÙˆØ¨Ø§Ø±Ù‡ Ú†Ú© Ø¯Ø§Ø®Ù„ lock (Ø¨Ø±Ø§ÛŒ HEAD/GET Ù‡Ù…Ø²Ù…Ø§Ù†)
             if (_current.TryGetValue(channel, out existing) && existing.ExpiresAt > now)
                 return existing.Song;
 
             var pool = channel == "main"
-    ? store.GetAllActive(null)      // ✅ main = mix of all channels
+    ? store.GetAllActive(null)      // âœ… main = mix of all channels
     : store.GetAllActive(channel);
 
 var ids = pool
@@ -851,7 +893,7 @@ var ids = pool
 
             if (ids.Count == 0) return null;
 
-            // ✅ اگر صف نداریم یا خالیه، shuffle جدید بساز
+            // âœ… Ø§Ú¯Ø± ØµÙ Ù†Ø¯Ø§Ø±ÛŒÙ… ÛŒØ§ Ø®Ø§Ù„ÛŒÙ‡ØŒ shuffle Ø¬Ø¯ÛŒØ¯ Ø¨Ø³Ø§Ø²
             if (!_queue.TryGetValue(channel, out var q) || q.Count == 0)
             {
                 for (int i = ids.Count - 1; i > 0; i--)
@@ -860,7 +902,7 @@ var ids = pool
                     (ids[i], ids[j]) = (ids[j], ids[i]);
                 }
 
-                // جلوگیری از اینکه اولِ shuffle = آخرین آهنگ قبلی
+                // Ø¬Ù„ÙˆÚ¯ÛŒØ±ÛŒ Ø§Ø² Ø§ÛŒÙ†Ú©Ù‡ Ø§ÙˆÙ„Ù shuffle = Ø¢Ø®Ø±ÛŒÙ† Ø¢Ù‡Ù†Ú¯ Ù‚Ø¨Ù„ÛŒ
                 if (ids.Count > 1 && _lastId.TryGetValue(channel, out var last) && !string.IsNullOrWhiteSpace(last))
                 {
                     if (ids[0] == last)
@@ -874,7 +916,7 @@ var ids = pool
             var nextId = q.Dequeue();
             var picked = store.GetById(nextId);
 
-            // اگر به هر دلیل نبود، یکی دیگه بردار
+            // Ø§Ú¯Ø± Ø¨Ù‡ Ù‡Ø± Ø¯Ù„ÛŒÙ„ Ù†Ø¨ÙˆØ¯ØŒ ÛŒÚ©ÛŒ Ø¯ÛŒÚ¯Ù‡ Ø¨Ø±Ø¯Ø§Ø±
             if (picked is null && q.Count > 0)
             {
                 nextId = q.Dequeue();
@@ -884,7 +926,7 @@ var ids = pool
 
             _lastId[channel] = picked.id;
 
-            // چون lengthSec اکثر آهنگ‌هات 0 هست، TTL پیش‌فرض 120 ثانیه
+            // Ú†ÙˆÙ† lengthSec Ø§Ú©Ø«Ø± Ø¢Ù‡Ù†Ú¯â€ŒÙ‡Ø§Øª 0 Ù‡Ø³ØªØŒ TTL Ù¾ÛŒØ´â€ŒÙØ±Ø¶ 120 Ø«Ø§Ù†ÛŒÙ‡
             var ttlSec = picked.lengthSec > 10 ? picked.lengthSec : 120;
 
             _current[channel] = new Entry
@@ -907,3 +949,4 @@ var ids = pool
 }
 
 }
+
