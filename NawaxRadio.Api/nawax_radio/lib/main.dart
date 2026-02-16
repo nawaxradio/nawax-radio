@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
-// چون main.dart و home_page.dart هر دو توی lib هستن:
+﻿import 'package:flutter/material.dart';
+// Ú†ÙˆÙ† main.dart Ùˆ home_page.dart Ù‡Ø± Ø¯Ùˆ ØªÙˆÛŒ lib Ù‡Ø³ØªÙ†:
 import 'home_page.dart';
 
-// رنگ‌های ثابت
+// Ø±Ù†Ú¯â€ŒÙ‡Ø§ÛŒ Ø«Ø§Ø¨Øª
 const Color primaryOrange = Color(0xFFFF481F); // Nawax orange
 const Color nawaxWhite = Color(0xFFFFFFFF);
 

@@ -1,13 +1,13 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
 
-/// یک ویژوالایزر ساده شبیه ساند بارهای کلاسیک
-/// وقتی isActive = true باشه انیمیشن میله‌ها تکرار میشه
+/// ÛŒÚ© ÙˆÛŒÚ˜ÙˆØ§Ù„Ø§ÛŒØ²Ø± Ø³Ø§Ø¯Ù‡ Ø´Ø¨ÛŒÙ‡ Ø³Ø§Ù†Ø¯ Ø¨Ø§Ø±Ù‡Ø§ÛŒ Ú©Ù„Ø§Ø³ÛŒÚ©
+/// ÙˆÙ‚ØªÛŒ isActive = true Ø¨Ø§Ø´Ù‡ Ø§Ù†ÛŒÙ…ÛŒØ´Ù† Ù…ÛŒÙ„Ù‡â€ŒÙ‡Ø§ ØªÚ©Ø±Ø§Ø± Ù…ÛŒØ´Ù‡
 class OrganicPulseVisualizer extends StatefulWidget {
   final double width;
   final double height;
   final Color barColor;
-  final int bars; // تعداد میله‌ها
+  final int bars; // ØªØ¹Ø¯Ø§Ø¯ Ù…ÛŒÙ„Ù‡â€ŒÙ‡Ø§
   final double maxBarHeight;
   final double spacing;
   final bool isActive;
@@ -112,17 +112,17 @@ class _BarsPainter extends CustomPainter {
     final midY = size.height / 2;
 
     for (int i = 0; i < bars; i++) {
-      // یک موج سینوسی نرم برای هر میله با اختلاف فاز
+      // ÛŒÚ© Ù…ÙˆØ¬ Ø³ÛŒÙ†ÙˆØ³ÛŒ Ù†Ø±Ù… Ø¨Ø±Ø§ÛŒ Ù‡Ø± Ù…ÛŒÙ„Ù‡ Ø¨Ø§ Ø§Ø®ØªÙ„Ø§Ù ÙØ§Ø²
       final phase = progress * 2 * pi + i * 0.4;
       final normalized = (sin(phase) + 1) / 2; // 0..1
 
-      // کمی محدودش می‌کنیم که خیلی دیوونه بالا پایین نره
+      // Ú©Ù…ÛŒ Ù…Ø­Ø¯ÙˆØ¯Ø´ Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ… Ú©Ù‡ Ø®ÛŒÙ„ÛŒ Ø¯ÛŒÙˆÙˆÙ†Ù‡ Ø¨Ø§Ù„Ø§ Ù¾Ø§ÛŒÛŒÙ† Ù†Ø±Ù‡
       final barHeight = 10 + normalized * maxBarHeight;
 
       final left = i * (barWidth + spacing);
       final right = left + barWidth;
 
-      // میله از وسط به بالا و پایین
+      // Ù…ÛŒÙ„Ù‡ Ø§Ø² ÙˆØ³Ø· Ø¨Ù‡ Ø¨Ø§Ù„Ø§ Ùˆ Ù¾Ø§ÛŒÛŒÙ†
       final top = midY - barHeight / 2;
       final bottom = midY + barHeight / 2;
 

@@ -1,8 +1,8 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'dart:typed_data';
 
 class AudioAnalyzer {
-  // ساده‌ترین FFT ممکن با سرعت بالا
+  // Ø³Ø§Ø¯Ù‡â€ŒØªØ±ÛŒÙ† FFT Ù…Ù…Ú©Ù† Ø¨Ø§ Ø³Ø±Ø¹Øª Ø¨Ø§Ù„Ø§
   static List<double> fftMagnitude(Float64List samples) {
     final int n = samples.length;
     final List<double> magnitudes = List.filled(n ~/ 2, 0);
@@ -16,7 +16,7 @@ class AudioAnalyzer {
     return magnitudes;
   }
 
-  // تبدیل FFT به 16–32 باند مناسب ویژوالایزر
+  // ØªØ¨Ø¯ÛŒÙ„ FFT Ø¨Ù‡ 16â€“32 Ø¨Ø§Ù†Ø¯ Ù…Ù†Ø§Ø³Ø¨ ÙˆÛŒÚ˜ÙˆØ§Ù„Ø§ÛŒØ²Ø±
   static List<double> bands(List<double> fft, int bandCount) {
     final List<double> output = List.filled(bandCount, 0);
     final int size = fft.length ~/ bandCount;

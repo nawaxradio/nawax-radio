@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -58,7 +58,7 @@ class _ChannelsPageState extends State<ChannelsPage> {
     _future = _fetchChannels();
   }
 
-  // ✅ build a safe URL without relying on AppConfig.url()
+  // âœ… build a safe URL without relying on AppConfig.url()
   Uri _channelsEndpoint() {
     final base = AppConfig.apiBaseUrl.trim();
     final safeBase = base.endsWith('/')
@@ -131,7 +131,7 @@ class _ChannelsPageState extends State<ChannelsPage> {
   String _subtitle(ApiChannel c) {
     final d = c.description.trim();
     if (d.isNotEmpty) return d;
-    return 'کانال ${c.key}';
+    return 'Ú©Ø§Ù†Ø§Ù„ ${c.key}';
   }
 
   @override
@@ -162,7 +162,7 @@ class _ChannelsPageState extends State<ChannelsPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'کانال‌ها',
+                            'Ú©Ø§Ù†Ø§Ù„â€ŒÙ‡Ø§',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 28,
@@ -172,7 +172,7 @@ class _ChannelsPageState extends State<ChannelsPage> {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'حال و هوای گوشیت رو انتخاب کن',
+                            'Ø­Ø§Ù„ Ùˆ Ù‡ÙˆØ§ÛŒ Ú¯ÙˆØ´ÛŒØª Ø±Ùˆ Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†',
                             style: TextStyle(
                               color: Colors.white54,
                               fontSize: 12,
@@ -240,9 +240,9 @@ class _ChannelsPageState extends State<ChannelsPage> {
 
                       if (snapshot.hasError) {
                         if (kDebugMode) {
-                          debugPrint('❌ channels error: ${snapshot.error}');
-                          debugPrint('✅ apiBaseUrl: ${AppConfig.apiBaseUrl}');
-                          debugPrint('✅ channels url: ${_channelsEndpoint()}');
+                          debugPrint('âŒ channels error: ${snapshot.error}');
+                          debugPrint('âœ… apiBaseUrl: ${AppConfig.apiBaseUrl}');
+                          debugPrint('âœ… channels url: ${_channelsEndpoint()}');
                         }
                         return Center(
                           child: Padding(
@@ -251,7 +251,7 @@ class _ChannelsPageState extends State<ChannelsPage> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 const Text(
-                                  'خطا در دریافت کانال‌ها',
+                                  'Ø®Ø·Ø§ Ø¯Ø± Ø¯Ø±ÛŒØ§ÙØª Ú©Ø§Ù†Ø§Ù„â€ŒÙ‡Ø§',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -278,7 +278,7 @@ class _ChannelsPageState extends State<ChannelsPage> {
                                       _future = _fetchChannels();
                                     });
                                   },
-                                  child: const Text('تلاش مجدد'),
+                                  child: const Text('ØªÙ„Ø§Ø´ Ù…Ø¬Ø¯Ø¯'),
                                 ),
                               ],
                             ),
@@ -291,7 +291,7 @@ class _ChannelsPageState extends State<ChannelsPage> {
                       if (channels.isEmpty) {
                         return const Center(
                           child: Text(
-                            'هیچ کانالی پیدا نشد',
+                            'Ù‡ÛŒÚ† Ú©Ø§Ù†Ø§Ù„ÛŒ Ù¾ÛŒØ¯Ø§ Ù†Ø´Ø¯',
                             style: TextStyle(color: Colors.white70),
                           ),
                         );
@@ -350,7 +350,7 @@ class _ChannelsPageState extends State<ChannelsPage> {
                                           width: 42,
                                           alignment: Alignment.center,
                                           child: Text(
-                                            ch.emoji.isEmpty ? '🎧' : ch.emoji,
+                                            ch.emoji.isEmpty ? 'ðŸŽ§' : ch.emoji,
                                             style: const TextStyle(
                                               fontSize: 22,
                                             ),
@@ -392,7 +392,7 @@ class _ChannelsPageState extends State<ChannelsPage> {
                                             const SizedBox(height: 4),
                                             if (isActive)
                                               const Text(
-                                                'در حال پخش',
+                                                'Ø¯Ø± Ø­Ø§Ù„ Ù¾Ø®Ø´',
                                                 style: TextStyle(
                                                   color: Color(0xFFFF481F),
                                                   fontSize: 11,

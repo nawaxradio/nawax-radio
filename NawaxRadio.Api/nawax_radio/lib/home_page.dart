@@ -1,4 +1,4 @@
-//home_page.dart
+﻿//home_page.dart
 import 'dart:async';
 import 'dart:convert';
 import 'package:nawax_radio/services/audio_player_service.dart';
@@ -40,9 +40,9 @@ class _HomePageState extends State<HomePage> {
   late final StreamSubscription<PlayerState> _playerStateSub;
 
   // ---------------- AutoNext lock & generation ----------------
-  int _playGeneration = 0; // هر بار تعویض کانال/تعویض ترک ++
-  bool _autoNextInFlight = false; // قفل AutoNext
-  String? _lastPreparedUrl; // جلوگیری از setUrl تکراری
+  int _playGeneration = 0; // Ù‡Ø± Ø¨Ø§Ø± ØªØ¹ÙˆÛŒØ¶ Ú©Ø§Ù†Ø§Ù„/ØªØ¹ÙˆÛŒØ¶ ØªØ±Ú© ++
+  bool _autoNextInFlight = false; // Ù‚ÙÙ„ AutoNext
+  String? _lastPreparedUrl; // Ø¬Ù„ÙˆÚ¯ÛŒØ±ÛŒ Ø§Ø² setUrl ØªÚ©Ø±Ø§Ø±ÛŒ
 
   @override
   void initState() {
@@ -54,7 +54,7 @@ class _HomePageState extends State<HomePage> {
       }
     });
 
-    // روی وب autoplay ممنوعه: فقط آماده می‌کنیم (بدون play)
+    // Ø±ÙˆÛŒ ÙˆØ¨ autoplay Ù…Ù…Ù†ÙˆØ¹Ù‡: ÙÙ‚Ø· Ø¢Ù…Ø§Ø¯Ù‡ Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ… (Ø¨Ø¯ÙˆÙ† play)
     _playNextFromRadio(autoplay: false, forceReload: true);
   }
 
@@ -64,7 +64,7 @@ class _HomePageState extends State<HomePage> {
   String _radioStreamUrl() =>
       '${AppConfig.apiBaseUrl}/radio/$_currentChannelKey/stream';
 
-  // URL یکتا برای مجبور کردن player به reload (مخصوصاً وب)
+  // URL ÛŒÚ©ØªØ§ Ø¨Ø±Ø§ÛŒ Ù…Ø¬Ø¨ÙˆØ± Ú©Ø±Ø¯Ù† player Ø¨Ù‡ reload (Ù…Ø®ØµÙˆØµØ§Ù‹ ÙˆØ¨)
   String _radioStreamUrlUnique() {
     final ts = DateTime.now().millisecondsSinceEpoch;
     return '${AppConfig.apiBaseUrl}/radio/$_currentChannelKey/stream?t=$ts';
@@ -87,11 +87,11 @@ class _HomePageState extends State<HomePage> {
   void _applyMetadata(Map<String, dynamic> root) {
     final np = _nowPlayingRoot(root);
 
-    // ✅ اولویت: متادیتای واقعی که باید بک‌اند بده
+    // âœ… Ø§ÙˆÙ„ÙˆÛŒØª: Ù…ØªØ§Ø¯ÛŒØªØ§ÛŒ ÙˆØ§Ù‚Ø¹ÛŒ Ú©Ù‡ Ø¨Ø§ÛŒØ¯ Ø¨Ú©â€ŒØ§Ù†Ø¯ Ø¨Ø¯Ù‡
     final title = _s(np['title']);
     final artist = _s(np['artist']);
 
-    // fallback فعلی بک‌اند
+    // fallback ÙØ¹Ù„ÛŒ Ø¨Ú©â€ŒØ§Ù†Ø¯
     final name = _s(np['name']);
     final singer = _s(np['singer']);
 
@@ -133,32 +133,32 @@ class _HomePageState extends State<HomePage> {
   Future<void> _handleAutoNext() async {
     if (!_userUnlockedAudio) return;
 
-    // قفل همزمانی: فقط یک بار
+    // Ù‚ÙÙ„ Ù‡Ù…Ø²Ù…Ø§Ù†ÛŒ: ÙÙ‚Ø· ÛŒÚ© Ø¨Ø§Ø±
     if (_autoNextInFlight) return;
     _autoNextInFlight = true;
 
     final genAtStart = _playGeneration;
 
     try {
-      debugPrint('✅ AUTO NEXT TRIGGERED');
+      debugPrint('âœ… AUTO NEXT TRIGGERED');
 
-      // اگر وسطش کانال/پخش عوض شد، این next بی‌اثر
+      // Ø§Ú¯Ø± ÙˆØ³Ø·Ø´ Ú©Ø§Ù†Ø§Ù„/Ù¾Ø®Ø´ Ø¹ÙˆØ¶ Ø´Ø¯ØŒ Ø§ÛŒÙ† next Ø¨ÛŒâ€ŒØ§Ø«Ø±
       if (genAtStart != _playGeneration) return;
 
-      // ✅ 1) tell backend to advance
+      // âœ… 1) tell backend to advance
       final res = await http.post(
         Uri.parse('${AppConfig.apiBaseUrl}/radio/$_currentChannelKey/next'),
       );
 
       if (res.statusCode < 200 || res.statusCode >= 300) {
-        debugPrint('❌ NEXT failed (${res.statusCode}): ${res.body}');
-        return; // نرو setUrl جدید، چون بک‌اند next نداده
+        debugPrint('âŒ NEXT failed (${res.statusCode}): ${res.body}');
+        return; // Ù†Ø±Ùˆ setUrl Ø¬Ø¯ÛŒØ¯ØŒ Ú†ÙˆÙ† Ø¨Ú©â€ŒØ§Ù†Ø¯ next Ù†Ø¯Ø§Ø¯Ù‡
       }
 
-      // ✅ 2) reload for player
+      // âœ… 2) reload for player
       await _playNextFromRadio(autoplay: true, forceReload: true);
     } catch (e) {
-      debugPrint('❌ AutoNext error: $e');
+      debugPrint('âŒ AutoNext error: $e');
     } finally {
       if (genAtStart == _playGeneration) {
         _autoNextInFlight = false;
@@ -171,7 +171,7 @@ class _HomePageState extends State<HomePage> {
     required bool autoplay,
     bool forceReload = false,
   }) async {
-    // جلوگیری از همزمانی (fetch)
+    // Ø¬Ù„ÙˆÚ¯ÛŒØ±ÛŒ Ø§Ø² Ù‡Ù…Ø²Ù…Ø§Ù†ÛŒ (fetch)
     if (_isFetchingNext) return;
     _isFetchingNext = true;
 
@@ -201,17 +201,17 @@ class _HomePageState extends State<HomePage> {
       // 1) metadata
       _applyMetadata(data);
 
-      // 2) انتخاب URL برای پخش
+      // 2) Ø§Ù†ØªØ®Ø§Ø¨ URL Ø¨Ø±Ø§ÛŒ Ù¾Ø®Ø´
       final np = _nowPlayingRoot(data);
       final audioUrlRaw = _s(np['audioUrl']);
 
       String rawUrl;
 
-      // ✅ WEB: فقط stream (برای دور زدن CORS گوگل استوریج)
+      // âœ… WEB: ÙÙ‚Ø· stream (Ø¨Ø±Ø§ÛŒ Ø¯ÙˆØ± Ø²Ø¯Ù† CORS Ú¯ÙˆÚ¯Ù„ Ø§Ø³ØªÙˆØ±ÛŒØ¬)
       if (kIsWeb) {
         rawUrl = forceReload ? _radioStreamUrlUnique() : _radioStreamUrl();
       } else {
-        // ✅ MOBILE: audioUrl مستقیم (اگر موجود نبود fallback به stream)
+        // âœ… MOBILE: audioUrl Ù…Ø³ØªÙ‚ÛŒÙ… (Ø§Ú¯Ø± Ù…ÙˆØ¬ÙˆØ¯ Ù†Ø¨ÙˆØ¯ fallback Ø¨Ù‡ stream)
         if (audioUrlRaw.isNotEmpty) {
           rawUrl = audioUrlRaw;
         } else {
@@ -220,9 +220,9 @@ class _HomePageState extends State<HomePage> {
       }
 
       final urlForPlayer = Uri.encodeFull(rawUrl);
-      debugPrint('🎧 setUrl => $urlForPlayer');
+      debugPrint('ðŸŽ§ setUrl => $urlForPlayer');
 
-      // اگر URL همان قبلی است و forceReload هم نیست، دوباره setUrl نزن
+      // Ø§Ú¯Ø± URL Ù‡Ù…Ø§Ù† Ù‚Ø¨Ù„ÛŒ Ø§Ø³Øª Ùˆ forceReload Ù‡Ù… Ù†ÛŒØ³ØªØŒ Ø¯ÙˆØ¨Ø§Ø±Ù‡ setUrl Ù†Ø²Ù†
       if (!forceReload && _lastPreparedUrl == urlForPlayer) {
         if (autoplay && _userUnlockedAudio) {
           await _safePlay();
@@ -243,7 +243,7 @@ class _HomePageState extends State<HomePage> {
 
       if (mounted) setState(() {});
     } catch (e) {
-      debugPrint('❌ stream prepare error: $e');
+      debugPrint('âŒ stream prepare error: $e');
       if (mounted) {
         setState(() {
           _errorText = 'stream prepare error: $e\nurl: ${_radioStreamUrl()}';
@@ -263,7 +263,7 @@ class _HomePageState extends State<HomePage> {
     try {
       await _player.play();
     } catch (e) {
-      debugPrint('❌ play blocked: $e');
+      debugPrint('âŒ play blocked: $e');
       if (mounted) {
         setState(() {
           _errorText = kIsWeb

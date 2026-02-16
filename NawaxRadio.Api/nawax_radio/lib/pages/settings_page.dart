@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -6,7 +6,7 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl, // فارسی راست‌به‌چپ
+      textDirection: TextDirection.rtl, // ÙØ§Ø±Ø³ÛŒ Ø±Ø§Ø³Øªâ€ŒØ¨Ù‡â€ŒÚ†Ù¾
       child: Scaffold(
         body: Container(
           decoration: const BoxDecoration(
@@ -24,7 +24,7 @@ class SettingsPage extends StatelessWidget {
 
                 // ----------- HEADER ------------
                 const Text(
-                  "تنظیمات",
+                  "ØªÙ†Ø¸ÛŒÙ…Ø§Øª",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 32,
@@ -33,113 +33,113 @@ class SettingsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  "تجربه‌ی خودت در ناواکس را شخصی‌سازی کن",
+                  "ØªØ¬Ø±Ø¨Ù‡â€ŒÛŒ Ø®ÙˆØ¯Øª Ø¯Ø± Ù†Ø§ÙˆØ§Ú©Ø³ Ø±Ø§ Ø´Ø®ØµÛŒâ€ŒØ³Ø§Ø²ÛŒ Ú©Ù†",
                   style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
                 const SizedBox(height: 30),
 
                 // ========== ACCOUNT ==========
-                _sectionTitle("حساب کاربری"),
+                _sectionTitle("Ø­Ø³Ø§Ø¨ Ú©Ø§Ø±Ø¨Ø±ÛŒ"),
 
                 _settingsItem(
                   icon: Icons.person,
-                  title: "نام کاربری",
-                  subtitle: "تنظیم یا ویرایش نام کاربری",
+                  title: "Ù†Ø§Ù… Ú©Ø§Ø±Ø¨Ø±ÛŒ",
+                  subtitle: "ØªÙ†Ø¸ÛŒÙ… ÛŒØ§ ÙˆÛŒØ±Ø§ÛŒØ´ Ù†Ø§Ù… Ú©Ø§Ø±Ø¨Ø±ÛŒ",
                   onTap: () {},
                 ),
 
                 _settingsItem(
                   icon: Icons.password,
-                  title: "رمز عبور",
-                  subtitle: "تغییر رمز ورود",
+                  title: "Ø±Ù…Ø² Ø¹Ø¨ÙˆØ±",
+                  subtitle: "ØªØºÛŒÛŒØ± Ø±Ù…Ø² ÙˆØ±ÙˆØ¯",
                   onTap: () {},
                 ),
 
                 _settingsItem(
                   icon: Icons.login,
-                  title: "ورود با حساب گوگل",
-                  subtitle: "ورود سریع و امن (به‌زودی)",
+                  title: "ÙˆØ±ÙˆØ¯ Ø¨Ø§ Ø­Ø³Ø§Ø¨ Ú¯ÙˆÚ¯Ù„",
+                  subtitle: "ÙˆØ±ÙˆØ¯ Ø³Ø±ÛŒØ¹ Ùˆ Ø§Ù…Ù† (Ø¨Ù‡â€ŒØ²ÙˆØ¯ÛŒ)",
                   onTap: () {},
                 ),
 
                 _settingsItem(
                   icon: Icons.logout,
-                  title: "خروج از حساب",
-                  subtitle: "قطع اتصال و خروج از برنامه",
+                  title: "Ø®Ø±ÙˆØ¬ Ø§Ø² Ø­Ø³Ø§Ø¨",
+                  subtitle: "Ù‚Ø·Ø¹ Ø§ØªØµØ§Ù„ Ùˆ Ø®Ø±ÙˆØ¬ Ø§Ø² Ø¨Ø±Ù†Ø§Ù…Ù‡",
                   onTap: () {},
                 ),
 
                 const SizedBox(height: 20),
 
                 // ========== GENERAL ==========
-                _sectionTitle("عمومی"),
+                _sectionTitle("Ø¹Ù…ÙˆÙ…ÛŒ"),
 
                 _settingsItemDisabled(
                   icon: Icons.language,
-                  title: "زبان برنامه",
-                  subtitle: "فعلاً فارسی (به‌زودی چندزبانه)",
+                  title: "Ø²Ø¨Ø§Ù† Ø¨Ø±Ù†Ø§Ù…Ù‡",
+                  subtitle: "ÙØ¹Ù„Ø§Ù‹ ÙØ§Ø±Ø³ÛŒ (Ø¨Ù‡â€ŒØ²ÙˆØ¯ÛŒ Ú†Ù†Ø¯Ø²Ø¨Ø§Ù†Ù‡)",
                 ),
 
                 const SizedBox(height: 20),
 
                 // ========== LEGAL ==========
-                _sectionTitle("قوانین و مقررات"),
+                _sectionTitle("Ù‚ÙˆØ§Ù†ÛŒÙ† Ùˆ Ù…Ù‚Ø±Ø±Ø§Øª"),
 
                 _settingsItem(
                   icon: Icons.balance,
-                  title: "کپی‌رایت و مالکیت محتوا",
-                  subtitle: "حقوق آثار موسیقی و قوانین انتشار",
+                  title: "Ú©Ù¾ÛŒâ€ŒØ±Ø§ÛŒØª Ùˆ Ù…Ø§Ù„Ú©ÛŒØª Ù…Ø­ØªÙˆØ§",
+                  subtitle: "Ø­Ù‚ÙˆÙ‚ Ø¢Ø«Ø§Ø± Ù…ÙˆØ³ÛŒÙ‚ÛŒ Ùˆ Ù‚ÙˆØ§Ù†ÛŒÙ† Ø§Ù†ØªØ´Ø§Ø±",
                   onTap: () => _openLegalSheet(context),
                 ),
 
                 _settingsItem(
                   icon: Icons.privacy_tip,
-                  title: "قوانین استفاده و حریم خصوصی",
-                  subtitle: "حقوق کاربر و شرایط استفاده از ناواکس",
+                  title: "Ù‚ÙˆØ§Ù†ÛŒÙ† Ø§Ø³ØªÙØ§Ø¯Ù‡ Ùˆ Ø­Ø±ÛŒÙ… Ø®ØµÙˆØµÛŒ",
+                  subtitle: "Ø­Ù‚ÙˆÙ‚ Ú©Ø§Ø±Ø¨Ø± Ùˆ Ø´Ø±Ø§ÛŒØ· Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø§Ø² Ù†Ø§ÙˆØ§Ú©Ø³",
                   onTap: () => _openTermsSheet(context),
                 ),
 
                 const SizedBox(height: 20),
 
                 // ========== BUSINESS ==========
-                _sectionTitle("تبلیغات و همکاری با ناواکس"),
+                _sectionTitle("ØªØ¨Ù„ÛŒØºØ§Øª Ùˆ Ù‡Ù…Ú©Ø§Ø±ÛŒ Ø¨Ø§ Ù†Ø§ÙˆØ§Ú©Ø³"),
 
                 _settingsItem(
                   icon: Icons.campaign,
-                  title: "تبلیغات در ناواکس",
-                  subtitle: "درخواست پخش تبلیغ صوتی و همکاری تجاری",
+                  title: "ØªØ¨Ù„ÛŒØºØ§Øª Ø¯Ø± Ù†Ø§ÙˆØ§Ú©Ø³",
+                  subtitle: "Ø¯Ø±Ø®ÙˆØ§Ø³Øª Ù¾Ø®Ø´ ØªØ¨Ù„ÛŒØº ØµÙˆØªÛŒ Ùˆ Ù‡Ù…Ú©Ø§Ø±ÛŒ ØªØ¬Ø§Ø±ÛŒ",
                   onTap: () => _openAdsSheet(context),
                 ),
 
                 _settingsItem(
                   icon: Icons.music_note,
-                  title: "ارسال آهنگ برای پخش",
-                  subtitle: "ویژه هنرمندان، خواننده‌ها و لیبل‌ها",
+                  title: "Ø§Ø±Ø³Ø§Ù„ Ø¢Ù‡Ù†Ú¯ Ø¨Ø±Ø§ÛŒ Ù¾Ø®Ø´",
+                  subtitle: "ÙˆÛŒÚ˜Ù‡ Ù‡Ù†Ø±Ù…Ù†Ø¯Ø§Ù†ØŒ Ø®ÙˆØ§Ù†Ù†Ø¯Ù‡â€ŒÙ‡Ø§ Ùˆ Ù„ÛŒØ¨Ù„â€ŒÙ‡Ø§",
                   onTap: () => _openArtistSheet(context),
                 ),
 
                 const SizedBox(height: 20),
 
                 // ========== CONTACT ==========
-                _sectionTitle("تماس با ما"),
+                _sectionTitle("ØªÙ…Ø§Ø³ Ø¨Ø§ Ù…Ø§"),
 
                 _settingsItem(
                   icon: Icons.email,
-                  title: "ایمیل پشتیبانی",
+                  title: "Ø§ÛŒÙ…ÛŒÙ„ Ù¾Ø´ØªÛŒØ¨Ø§Ù†ÛŒ",
                   subtitle: "radio@nawax.app",
                   onTap: () {},
                 ),
 
                 _settingsItem(
                   icon: Icons.camera_alt,
-                  title: "اینستاگرام",
+                  title: "Ø§ÛŒÙ†Ø³ØªØ§Ú¯Ø±Ø§Ù…",
                   subtitle: "@nawaxradio",
                   onTap: () {},
                 ),
 
                 _settingsItem(
                   icon: Icons.play_circle,
-                  title: "یوتیوب",
+                  title: "ÛŒÙˆØªÛŒÙˆØ¨",
                   subtitle: "Nawax Radio",
                   onTap: () {},
                 ),
@@ -219,11 +219,11 @@ class SettingsPage extends StatelessWidget {
       child: const ListTile(
         leading: Icon(Icons.language, color: Colors.white24, size: 26),
         title: Text(
-          "زبان برنامه",
+          "Ø²Ø¨Ø§Ù† Ø¨Ø±Ù†Ø§Ù…Ù‡",
           style: TextStyle(color: Colors.white38, fontSize: 16),
         ),
         subtitle: Text(
-          "فعلاً فارسی (به‌زودی چندزبانه)",
+          "ÙØ¹Ù„Ø§Ù‹ ÙØ§Ø±Ø³ÛŒ (Ø¨Ù‡â€ŒØ²ÙˆØ¯ÛŒ Ú†Ù†Ø¯Ø²Ø¨Ø§Ù†Ù‡)",
           style: TextStyle(color: Colors.white24, fontSize: 12),
         ),
         trailing: Icon(Icons.lock, color: Colors.white30, size: 16),
@@ -247,15 +247,15 @@ class SettingsPage extends StatelessWidget {
         padding: EdgeInsets.all(20),
         child: SingleChildScrollView(
           child: Text('''
-🎵 قوانین کپی‌رایت — ناواکس رادیو
+ðŸŽµ Ù‚ÙˆØ§Ù†ÛŒÙ† Ú©Ù¾ÛŒâ€ŒØ±Ø§ÛŒØª â€” Ù†Ø§ÙˆØ§Ú©Ø³ Ø±Ø§Ø¯ÛŒÙˆ
 
-تمام آهنگ‌های پخش‌شده در ناواکس متعلق به صاحبان اصلی اثر، هنرمندان، لیبل‌ها و ناشران قانونی آن‌هاست.
+ØªÙ…Ø§Ù… Ø¢Ù‡Ù†Ú¯â€ŒÙ‡Ø§ÛŒ Ù¾Ø®Ø´â€ŒØ´Ø¯Ù‡ Ø¯Ø± Ù†Ø§ÙˆØ§Ú©Ø³ Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ ØµØ§Ø­Ø¨Ø§Ù† Ø§ØµÙ„ÛŒ Ø§Ø«Ø±ØŒ Ù‡Ù†Ø±Ù…Ù†Ø¯Ø§Ù†ØŒ Ù„ÛŒØ¨Ù„â€ŒÙ‡Ø§ Ùˆ Ù†Ø§Ø´Ø±Ø§Ù† Ù‚Ø§Ù†ÙˆÙ†ÛŒ Ø¢Ù†â€ŒÙ‡Ø§Ø³Øª.
 
-ناواکس هیچ‌گونه ادعای مالکیت نسبت به آثار ندارد مگر در مواردی که به‌صورت رسمی ثبت شده باشد.
+Ù†Ø§ÙˆØ§Ú©Ø³ Ù‡ÛŒÚ†â€ŒÚ¯ÙˆÙ†Ù‡ Ø§Ø¯Ø¹Ø§ÛŒ Ù…Ø§Ù„Ú©ÛŒØª Ù†Ø³Ø¨Øª Ø¨Ù‡ Ø¢Ø«Ø§Ø± Ù†Ø¯Ø§Ø±Ø¯ Ù…Ú¯Ø± Ø¯Ø± Ù…ÙˆØ§Ø±Ø¯ÛŒ Ú©Ù‡ Ø¨Ù‡â€ŒØµÙˆØ±Øª Ø±Ø³Ù…ÛŒ Ø«Ø¨Øª Ø´Ø¯Ù‡ Ø¨Ø§Ø´Ø¯.
 
-آپلود یا ارسال آثار دارای حق نشر بدون مجوز صاحب اثر ممنوع است.
+Ø¢Ù¾Ù„ÙˆØ¯ ÛŒØ§ Ø§Ø±Ø³Ø§Ù„ Ø¢Ø«Ø§Ø± Ø¯Ø§Ø±Ø§ÛŒ Ø­Ù‚ Ù†Ø´Ø± Ø¨Ø¯ÙˆÙ† Ù…Ø¬ÙˆØ² ØµØ§Ø­Ø¨ Ø§Ø«Ø± Ù…Ù…Ù†ÙˆØ¹ Ø§Ø³Øª.
 
-در صورت دریافت درخواست حذف (DMCA)، آهنگ به‌سرعت از سامانه حذف می‌شود.
+Ø¯Ø± ØµÙˆØ±Øª Ø¯Ø±ÛŒØ§ÙØª Ø¯Ø±Ø®ÙˆØ§Ø³Øª Ø­Ø°Ù (DMCA)ØŒ Ø¢Ù‡Ù†Ú¯ Ø¨Ù‡â€ŒØ³Ø±Ø¹Øª Ø§Ø² Ø³Ø§Ù…Ø§Ù†Ù‡ Ø­Ø°Ù Ù…ÛŒâ€ŒØ´ÙˆØ¯.
 ''', style: TextStyle(color: Colors.white70, height: 1.6)),
         ),
       ),
@@ -273,14 +273,14 @@ class SettingsPage extends StatelessWidget {
         padding: EdgeInsets.all(20),
         child: SingleChildScrollView(
           child: Text('''
-📄 قوانین استفاده و حریم خصوصی
+ðŸ“„ Ù‚ÙˆØ§Ù†ÛŒÙ† Ø§Ø³ØªÙØ§Ø¯Ù‡ Ùˆ Ø­Ø±ÛŒÙ… Ø®ØµÙˆØµÛŒ
 
-• ما حداقل اطلاعات ممکن را برای بهبود عملکرد برنامه جمع‌آوری می‌کنیم.  
-• اطلاعات کاربران فروخته یا منتقل نمی‌شود.  
-• مسئولیت آپلود یا ارسال آثار دارای حق نشر بر عهده کاربر است.  
-• هرگونه استفاده غیرمجاز از برند ناواکس ممنوع می‌باشد.
+â€¢ Ù…Ø§ Ø­Ø¯Ø§Ù‚Ù„ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ù…Ù…Ú©Ù† Ø±Ø§ Ø¨Ø±Ø§ÛŒ Ø¨Ù‡Ø¨ÙˆØ¯ Ø¹Ù…Ù„Ú©Ø±Ø¯ Ø¨Ø±Ù†Ø§Ù…Ù‡ Ø¬Ù…Ø¹â€ŒØ¢ÙˆØ±ÛŒ Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ….  
+â€¢ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ú©Ø§Ø±Ø¨Ø±Ø§Ù† ÙØ±ÙˆØ®ØªÙ‡ ÛŒØ§ Ù…Ù†ØªÙ‚Ù„ Ù†Ù…ÛŒâ€ŒØ´ÙˆØ¯.  
+â€¢ Ù…Ø³Ø¦ÙˆÙ„ÛŒØª Ø¢Ù¾Ù„ÙˆØ¯ ÛŒØ§ Ø§Ø±Ø³Ø§Ù„ Ø¢Ø«Ø§Ø± Ø¯Ø§Ø±Ø§ÛŒ Ø­Ù‚ Ù†Ø´Ø± Ø¨Ø± Ø¹Ù‡Ø¯Ù‡ Ú©Ø§Ø±Ø¨Ø± Ø§Ø³Øª.  
+â€¢ Ù‡Ø±Ú¯ÙˆÙ†Ù‡ Ø§Ø³ØªÙØ§Ø¯Ù‡ ØºÛŒØ±Ù…Ø¬Ø§Ø² Ø§Ø² Ø¨Ø±Ù†Ø¯ Ù†Ø§ÙˆØ§Ú©Ø³ Ù…Ù…Ù†ÙˆØ¹ Ù…ÛŒâ€ŒØ¨Ø§Ø´Ø¯.
 
-با استفاده از این برنامه، شما با شرایط فوق موافقت می‌کنید.
+Ø¨Ø§ Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø§Ø² Ø§ÛŒÙ† Ø¨Ø±Ù†Ø§Ù…Ù‡ØŒ Ø´Ù…Ø§ Ø¨Ø§ Ø´Ø±Ø§ÛŒØ· ÙÙˆÙ‚ Ù…ÙˆØ§ÙÙ‚Øª Ù…ÛŒâ€ŒÚ©Ù†ÛŒØ¯.
 ''', style: TextStyle(color: Colors.white70, height: 1.6)),
         ),
       ),
@@ -299,15 +299,15 @@ class SettingsPage extends StatelessWidget {
       builder: (_) => const Padding(
         padding: EdgeInsets.all(20),
         child: Text('''
-📢 تبلیغات در ناواکس
+ðŸ“¢ ØªØ¨Ù„ÛŒØºØ§Øª Ø¯Ø± Ù†Ø§ÙˆØ§Ú©Ø³
 
-امکان‌پذیر برای:
-• تبلیغات صوتی بین آهنگ‌ها  
-• اسپانسر برنامه‌ها  
-• همکاری برندها  
-• معرفی هنرمندان و آثار
+Ø§Ù…Ú©Ø§Ù†â€ŒÙ¾Ø°ÛŒØ± Ø¨Ø±Ø§ÛŒ:
+â€¢ ØªØ¨Ù„ÛŒØºØ§Øª ØµÙˆØªÛŒ Ø¨ÛŒÙ† Ø¢Ù‡Ù†Ú¯â€ŒÙ‡Ø§  
+â€¢ Ø§Ø³Ù¾Ø§Ù†Ø³Ø± Ø¨Ø±Ù†Ø§Ù…Ù‡â€ŒÙ‡Ø§  
+â€¢ Ù‡Ù…Ú©Ø§Ø±ÛŒ Ø¨Ø±Ù†Ø¯Ù‡Ø§  
+â€¢ Ù…Ø¹Ø±ÙÛŒ Ù‡Ù†Ø±Ù…Ù†Ø¯Ø§Ù† Ùˆ Ø¢Ø«Ø§Ø±
 
-درخواست همکاری:
+Ø¯Ø±Ø®ÙˆØ§Ø³Øª Ù‡Ù…Ú©Ø§Ø±ÛŒ:
 ads@nawax.app
 ''', style: TextStyle(color: Colors.white70, height: 1.6)),
       ),
@@ -326,18 +326,18 @@ ads@nawax.app
       builder: (_) => const Padding(
         padding: EdgeInsets.all(20),
         child: Text('''
-🎤 ارسال آهنگ برای پخش در ناواکس
+ðŸŽ¤ Ø§Ø±Ø³Ø§Ù„ Ø¢Ù‡Ù†Ú¯ Ø¨Ø±Ø§ÛŒ Ù¾Ø®Ø´ Ø¯Ø± Ù†Ø§ÙˆØ§Ú©Ø³
 
-هنرمندان و خوانندگان می‌توانند آثار خود را برای بررسی ارسال کنند.
+Ù‡Ù†Ø±Ù…Ù†Ø¯Ø§Ù† Ùˆ Ø®ÙˆØ§Ù†Ù†Ø¯Ú¯Ø§Ù† Ù…ÛŒâ€ŒØªÙˆØ§Ù†Ù†Ø¯ Ø¢Ø«Ø§Ø± Ø®ÙˆØ¯ Ø±Ø§ Ø¨Ø±Ø§ÛŒ Ø¨Ø±Ø±Ø³ÛŒ Ø§Ø±Ø³Ø§Ù„ Ú©Ù†Ù†Ø¯.
 
-سبک‌های مورد پشتیبانی:
-• پاپ  
-• رپ / هیپ‌هاپ  
-• الکترونیک  
-• سنتی / فولکلور  
-• هنرمندان مستقل  
+Ø³Ø¨Ú©â€ŒÙ‡Ø§ÛŒ Ù…ÙˆØ±Ø¯ Ù¾Ø´ØªÛŒØ¨Ø§Ù†ÛŒ:
+â€¢ Ù¾Ø§Ù¾  
+â€¢ Ø±Ù¾ / Ù‡ÛŒÙ¾â€ŒÙ‡Ø§Ù¾  
+â€¢ Ø§Ù„Ú©ØªØ±ÙˆÙ†ÛŒÚ©  
+â€¢ Ø³Ù†ØªÛŒ / ÙÙˆÙ„Ú©Ù„ÙˆØ±  
+â€¢ Ù‡Ù†Ø±Ù…Ù†Ø¯Ø§Ù† Ù…Ø³ØªÙ‚Ù„  
 
-ارسال آثار:
+Ø§Ø±Ø³Ø§Ù„ Ø¢Ø«Ø§Ø±:
 artists@nawax.app
 ''', style: TextStyle(color: Colors.white70, height: 1.6)),
       ),
